@@ -477,7 +477,7 @@
       color: #bdc3c7;
     }
 
-    /* QR Triple Popup */
+    /* QR Triple / Slide Popup */
     .qr-triple-container {
       background: white;
       border-radius: 20px;
@@ -494,13 +494,43 @@
       transform: scale(1);
     }
 
+    .qr-triple-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
     .qr-triple-header {
       font-size: 20px;
       font-weight: 700;
       color: var(--text);
-      margin-bottom: 24px;
     }
 
+    .qr-mode-toggle {
+      display: flex;
+      background: #f0f3f6;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .qr-mode-btn {
+      padding: 6px 14px;
+      border: none;
+      background: transparent;
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      color: var(--text-light);
+      transition: all 0.15s;
+    }
+
+    .qr-mode-btn.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    /* Grid mode (3개 동시) */
     .qr-triple-grid {
       display: flex;
       gap: 32px;
@@ -515,9 +545,7 @@
       gap: 12px;
     }
 
-    .qr-triple-item canvas {
-      display: block;
-    }
+    .qr-triple-item canvas { display: block; }
 
     .qr-triple-label {
       font-size: 16px;
@@ -541,6 +569,95 @@
       justify-content: center;
       color: #bdc3c7;
       font-size: 13px;
+    }
+
+    /* Slide mode (1개씩) */
+    .qr-slide-view { display: none; }
+    .qr-slide-view.active-mode { display: block; }
+    .qr-triple-grid-wrap { display: block; }
+    .qr-triple-grid-wrap.hidden-mode { display: none; }
+
+    .qr-slide-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .qr-slide-arrow {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: white;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      color: var(--text);
+      user-select: none;
+    }
+
+    .qr-slide-arrow:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: #f0f3f8;
+    }
+
+    .qr-slide-title {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--primary-dark);
+      min-width: 160px;
+    }
+
+    .qr-slide-canvas {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
+
+    .qr-slide-detail {
+      font-size: 15px;
+      color: var(--text);
+      font-weight: 500;
+      margin-bottom: 16px;
+    }
+
+    .qr-slide-dots {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .qr-slide-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #dfe6e9;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .qr-slide-dot.active {
+      background: var(--primary);
+      transform: scale(1.3);
+    }
+
+    .qr-slide-empty {
+      width: 300px;
+      height: 300px;
+      border: 2px dashed var(--border);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #bdc3c7;
+      font-size: 15px;
+      margin: 0 auto;
     }
 
     @media (max-width: 768px) {
@@ -3186,11 +3303,31 @@ var qrcode = function() {
     </div>
   </div>
 
-  <!-- QR Triple Popup (3개 동시) -->
+  <!-- QR Triple / Slide Popup -->
   <div class="qr-popup-overlay" id="qrTriple" onclick="closeTripleQR(event)">
     <div class="qr-triple-container" onclick="event.stopPropagation()">
-      <div class="qr-triple-header" id="qrTripleHeader"></div>
-      <div class="qr-triple-grid" id="qrTripleGrid"></div>
+      <div class="qr-triple-top">
+        <div class="qr-triple-header" id="qrTripleHeader"></div>
+        <div class="qr-mode-toggle">
+          <button class="qr-mode-btn active" id="modeGridBtn" onclick="switchQRMode('grid')">▦ 3개</button>
+          <button class="qr-mode-btn" id="modeSlideBtn" onclick="switchQRMode('slide')">◀▶ 1개</button>
+        </div>
+      </div>
+      <!-- Grid Mode -->
+      <div class="qr-triple-grid-wrap" id="qrGridWrap">
+        <div class="qr-triple-grid" id="qrTripleGrid"></div>
+      </div>
+      <!-- Slide Mode -->
+      <div class="qr-slide-view" id="qrSlideView">
+        <div class="qr-slide-nav">
+          <button class="qr-slide-arrow" onclick="slideQR(-1)">◀</button>
+          <div class="qr-slide-title" id="qrSlideTitle"></div>
+          <button class="qr-slide-arrow" onclick="slideQR(1)">▶</button>
+        </div>
+        <div class="qr-slide-canvas" id="qrSlideCanvas"></div>
+        <div class="qr-slide-detail" id="qrSlideDetail"></div>
+        <div class="qr-slide-dots" id="qrSlideDots"></div>
+      </div>
       <div class="qr-popup-hint" style="margin-top:20px;">화면을 탭하면 닫힙니다</div>
     </div>
   </div>
@@ -4417,6 +4554,12 @@ var qrcode = function() {
 
     // ==================== TRIPLE QR POPUP ====================
 
+    // ==================== TRIPLE / SLIDE QR ====================
+
+    let slideItems = []; // [{tbName, qrData, url}]
+    let slideIndex = 0;
+    let qrViewMode = 'grid'; // 'grid' or 'slide'
+
     window.openTripleQR = function(studentId, studentName) {
       const grid = document.getElementById('qrTripleGrid');
       const header = document.getElementById('qrTripleHeader');
@@ -4426,9 +4569,14 @@ var qrcode = function() {
 
       const sortedTbs = [...textbooks].sort((a,b) => a.order - b.order);
 
+      // 슬라이드 데이터 준비
+      slideItems = [];
+
       for (const tb of sortedTbs) {
         const qrData = getQRData(studentId, tb.id);
+        slideItems.push({ tbName: tb.name, qrData: qrData });
 
+        // Grid 모드용 아이템
         const item = document.createElement('div');
         item.className = 'qr-triple-item';
 
@@ -4438,46 +4586,8 @@ var qrcode = function() {
             <div class="qr-triple-empty">항목을 선택하세요</div>
           `;
         } else {
-          // QR 생성
           const canvasWrap = document.createElement('div');
-          try {
-            var qr = qrcode(0, 'L');
-            qr.addData(qrData.url, 'Byte');
-            qr.make();
-
-            var moduleCount = qr.getModuleCount();
-            var cellSize = 12;
-            var canvasSize = moduleCount * cellSize;
-            var margin = cellSize * 4;
-            var totalSize = canvasSize + margin * 2;
-
-            var canvas = document.createElement('canvas');
-            canvas.width = totalSize;
-            canvas.height = totalSize;
-            canvas.style.width = '200px';
-            canvas.style.height = '200px';
-            canvas.style.imageRendering = 'pixelated';
-            canvas.style.borderRadius = '8px';
-
-            var ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, totalSize, totalSize);
-            ctx.fillStyle = '#000000';
-            for (var row = 0; row < moduleCount; row++) {
-              for (var col = 0; col < moduleCount; col++) {
-                if (qr.isDark(row, col)) {
-                  ctx.fillRect(
-                    margin + col * cellSize,
-                    margin + row * cellSize,
-                    cellSize, cellSize
-                  );
-                }
-              }
-            }
-            canvasWrap.appendChild(canvas);
-          } catch (e) {
-            canvasWrap.innerHTML = '<div class="qr-triple-empty">생성 실패</div>';
-          }
+          renderQRCanvas(canvasWrap, qrData.url, 200);
 
           item.innerHTML = `<div class="qr-triple-label">${escapeHtml(tb.name)}</div>`;
           item.appendChild(canvasWrap);
@@ -4491,13 +4601,134 @@ var qrcode = function() {
         grid.appendChild(item);
       }
 
+      // 모드 복원
+      switchQRMode(qrViewMode);
+      slideIndex = 0;
+      renderSlide();
+
       document.getElementById('qrTriple').classList.add('active');
     };
+
+    // QR Canvas 렌더링 공통 함수
+    function renderQRCanvas(container, url, displaySize) {
+      try {
+        var qr = qrcode(0, 'L');
+        qr.addData(url, 'Byte');
+        qr.make();
+
+        var moduleCount = qr.getModuleCount();
+        var cellSize = 12;
+        var canvasSize = moduleCount * cellSize;
+        var margin = cellSize * 4;
+        var totalSize = canvasSize + margin * 2;
+
+        var canvas = document.createElement('canvas');
+        canvas.width = totalSize;
+        canvas.height = totalSize;
+        canvas.style.width = displaySize + 'px';
+        canvas.style.height = displaySize + 'px';
+        canvas.style.imageRendering = 'pixelated';
+        canvas.style.borderRadius = '8px';
+
+        var ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, totalSize, totalSize);
+        ctx.fillStyle = '#000000';
+        for (var row = 0; row < moduleCount; row++) {
+          for (var col = 0; col < moduleCount; col++) {
+            if (qr.isDark(row, col)) {
+              ctx.fillRect(
+                margin + col * cellSize,
+                margin + row * cellSize,
+                cellSize, cellSize
+              );
+            }
+          }
+        }
+        container.appendChild(canvas);
+      } catch (e) {
+        container.innerHTML = `<div class="qr-slide-empty">생성 실패</div>`;
+      }
+    }
+
+    // 모드 전환
+    window.switchQRMode = function(mode) {
+      qrViewMode = mode;
+      const gridWrap = document.getElementById('qrGridWrap');
+      const slideView = document.getElementById('qrSlideView');
+      const gridBtn = document.getElementById('modeGridBtn');
+      const slideBtn = document.getElementById('modeSlideBtn');
+
+      if (mode === 'grid') {
+        gridWrap.classList.remove('hidden-mode');
+        slideView.classList.remove('active-mode');
+        gridBtn.classList.add('active');
+        slideBtn.classList.remove('active');
+      } else {
+        gridWrap.classList.add('hidden-mode');
+        slideView.classList.add('active-mode');
+        gridBtn.classList.remove('active');
+        slideBtn.classList.add('active');
+        renderSlide();
+      }
+    };
+
+    // 슬라이드 네비게이션
+    window.slideQR = function(delta) {
+      slideIndex = (slideIndex + delta + slideItems.length) % slideItems.length;
+      renderSlide();
+    };
+
+    function renderSlide() {
+      if (slideItems.length === 0) return;
+
+      const item = slideItems[slideIndex];
+      const title = document.getElementById('qrSlideTitle');
+      const canvasContainer = document.getElementById('qrSlideCanvas');
+      const detail = document.getElementById('qrSlideDetail');
+      const dots = document.getElementById('qrSlideDots');
+
+      title.textContent = `${item.tbName}  (${slideIndex + 1}/${slideItems.length})`;
+      canvasContainer.innerHTML = '';
+
+      if (!item.qrData) {
+        canvasContainer.innerHTML = '<div class="qr-slide-empty">항목을 선택하세요</div>';
+        detail.textContent = '';
+      } else {
+        renderQRCanvas(canvasContainer, item.qrData.url, 300);
+        detail.textContent = item.qrData.display;
+      }
+
+      // 인디케이터
+      dots.innerHTML = slideItems.map((_, i) =>
+        `<div class="qr-slide-dot ${i === slideIndex ? 'active' : ''}" onclick="slideIndex=${i};renderSlide();"></div>`
+      ).join('');
+    }
+
+    // renderSlide를 window에 노출 (dot onclick에서 사용)
+    window.renderSlide = renderSlide;
 
     window.closeTripleQR = function(e) {
       if (e && e.target !== document.getElementById('qrTriple')) return;
       document.getElementById('qrTriple').classList.remove('active');
     };
+
+    // 스와이프 지원
+    (function() {
+      let touchStartX = 0;
+      const slideView = document.getElementById('qrSlideView');
+
+      slideView.addEventListener('touchstart', (e) => {
+        touchStartX = e.touches[0].clientX;
+      }, { passive: true });
+
+      slideView.addEventListener('touchend', (e) => {
+        const diff = touchStartX - e.changedTouches[0].clientX;
+        if (Math.abs(diff) > 50) {
+          slideQR(diff > 0 ? 1 : -1);
+        }
+      }, { passive: true });
+    })();
 
     // ==================== PRINT ====================
 
