@@ -1,0 +1,1753 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR 코드 생성기 - 고샘영어</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
+
+    :root {
+      --primary: #778899;
+      --primary-light: #8fa0b3;
+      --primary-dark: #5a6d7f;
+      --bg: #f4f6f8;
+      --card-bg: #ffffff;
+      --text: #2c3e50;
+      --text-light: #7f8c8d;
+      --border: #dfe6e9;
+      --danger: #e74c3c;
+      --danger-hover: #c0392b;
+      --success: #27ae60;
+      --success-hover: #219a52;
+      --warning: #f39c12;
+      --shadow: 0 2px 12px rgba(0,0,0,0.08);
+      --shadow-hover: 0 4px 20px rgba(0,0,0,0.12);
+      --radius: 10px;
+      --font-size: 14px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: var(--font-size);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+    }
+
+    .header .subtitle {
+      font-size: 11px;
+      opacity: 0.8;
+      margin-top: 2px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .date-picker {
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: white;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .date-picker::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+    }
+
+    /* Main Layout */
+    .main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 20px;
+    }
+
+    /* Card */
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-header h2 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .card-body {
+      padding: 16px 18px;
+    }
+
+    /* Student List Panel */
+    .student-panel {
+      position: sticky;
+      top: 20px;
+      max-height: calc(100vh - 120px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .student-add-row {
+      display: flex;
+      gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .student-add-row input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .student-add-row input:focus {
+      border-color: var(--primary);
+    }
+
+    .student-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .student-item {
+      display: flex;
+      align-items: center;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+      gap: 10px;
+      margin-bottom: 2px;
+    }
+
+    .student-item:hover {
+      background: #f0f3f6;
+    }
+
+    .student-item.selected {
+      background: rgba(119, 136, 153, 0.12);
+      border: 1px solid rgba(119, 136, 153, 0.3);
+    }
+
+    .student-item:not(.selected) {
+      border: 1px solid transparent;
+    }
+
+    .student-checkbox {
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.15s;
+    }
+
+    .student-item.selected .student-checkbox {
+      background: var(--primary);
+      border-color: var(--primary);
+    }
+
+    .student-checkbox svg {
+      width: 12px;
+      height: 12px;
+      fill: none;
+      stroke: white;
+      stroke-width: 2.5;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .student-item.selected .student-checkbox svg {
+      opacity: 1;
+    }
+
+    .student-name {
+      flex: 1;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .student-actions {
+      display: flex;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .student-item:hover .student-actions {
+      opacity: 1;
+    }
+
+    .icon-btn {
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: transparent;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+      color: var(--text-light);
+    }
+
+    .icon-btn:hover {
+      background: #e8ecef;
+    }
+
+    .icon-btn.danger:hover {
+      background: #fdecea;
+      color: var(--danger);
+    }
+
+    .icon-btn svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 8px 14px;
+      border: none;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.15s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn-sm {
+      padding: 6px 10px;
+      font-size: 12px;
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: white;
+    }
+
+    .btn-success:hover {
+      background: var(--success-hover);
+    }
+
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: var(--danger-hover);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .btn-outline:hover {
+      background: #f0f3f6;
+    }
+
+    /* Selected Students Work Area */
+    .work-area {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-light);
+    }
+
+    .empty-state svg {
+      width: 48px;
+      height: 48px;
+      margin-bottom: 12px;
+      opacity: 0.4;
+    }
+
+    .empty-state p {
+      font-size: 14px;
+    }
+
+    .student-work-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--card-bg);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .student-work-header {
+      padding: 12px 18px;
+      background: #f8f9fa;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .student-work-header h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--primary-dark);
+    }
+
+    .qr-row {
+      display: flex;
+      align-items: center;
+      padding: 14px 18px;
+      border-bottom: 1px solid #f0f2f4;
+      gap: 16px;
+    }
+
+    .qr-row:last-child {
+      border-bottom: none;
+    }
+
+    .qr-row-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--primary);
+      min-width: 44px;
+    }
+
+    .qr-row-inputs {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .qr-row-qr {
+      flex-shrink: 0;
+      width: 80px;
+      height: 80px;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fafbfc;
+    }
+
+    .qr-row-qr canvas {
+      border-radius: 4px;
+    }
+
+    .qr-row-qr .placeholder {
+      font-size: 11px;
+      color: #bdc3c7;
+    }
+
+    /* Input Controls */
+    .input-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .input-group label {
+      font-size: 12px;
+      color: var(--text-light);
+      white-space: nowrap;
+    }
+
+    .num-input-wrap {
+      display: flex;
+      align-items: center;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    .num-input-wrap button {
+      width: 28px;
+      height: 32px;
+      border: none;
+      background: #f0f3f6;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s;
+    }
+
+    .num-input-wrap button:hover {
+      background: #e0e5ea;
+    }
+
+    .num-input-wrap input {
+      width: 48px;
+      text-align: center;
+      border: none;
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      padding: 6px 4px;
+      font-family: inherit;
+      font-size: 13px;
+      outline: none;
+    }
+
+    /* Button Grid for units */
+    .btn-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .btn-grid .grid-btn {
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: white;
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+      color: var(--text);
+    }
+
+    .btn-grid .grid-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .btn-grid .grid-btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal {
+      background: white;
+      border-radius: var(--radius);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+      width: 360px;
+      max-width: 90vw;
+      transform: translateY(20px);
+      transition: transform 0.2s;
+    }
+
+    .modal-overlay.active .modal {
+      transform: translateY(0);
+    }
+
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .modal-body {
+      padding: 20px;
+    }
+
+    .modal-body input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .modal-body input:focus {
+      border-color: var(--primary);
+    }
+
+    .modal-footer {
+      padding: 12px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #2c3e50;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 13px;
+      z-index: 200;
+      transition: transform 0.3s;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* Badge */
+    .badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--primary);
+      color: white;
+      font-weight: 500;
+    }
+
+    /* Loading */
+    .loading {
+      text-align: center;
+      padding: 30px;
+      color: var(--text-light);
+    }
+
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 10px;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .main {
+        grid-template-columns: 1fr;
+        padding: 12px;
+      }
+
+      .student-panel {
+        position: static;
+        max-height: 300px;
+      }
+    }
+
+    /* Select count bar */
+    .select-bar {
+      padding: 10px 16px;
+      background: rgba(119, 136, 153, 0.06);
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--text-light);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <h1>📱 QR 코드 생성기</h1>
+      <div class="subtitle">고샘영어 학원</div>
+    </div>
+    <div class="header-right">
+      <input type="date" class="date-picker" id="workDate">
+      <button class="btn btn-sm btn-success" onclick="saveAllRecords()" style="font-weight:600;">💾 저장</button>
+      <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);" onclick="openHistory()">📋 기록</button>
+      <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);" onclick="printSelected()">🖨 인쇄</button>
+      <button class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.3);" onclick="openSettings()">⚙ 관리</button>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <!-- Left: Student List -->
+    <div class="card student-panel">
+      <div class="card-header">
+        <h2>👨‍🎓 학생 목록</h2>
+        <span class="badge" id="studentCount">0명</span>
+      </div>
+      <div class="student-add-row">
+        <input type="text" id="newStudentName" placeholder="학생 이름 입력" maxlength="20"
+               onkeypress="if(event.key==='Enter')addStudent()">
+        <button class="btn btn-primary btn-sm" onclick="addStudent()">추가</button>
+      </div>
+      <div class="student-list" id="studentList">
+        <div class="loading">
+          <div class="spinner"></div>
+          불러오는 중...
+        </div>
+      </div>
+      <div class="select-bar">
+        <span id="selectInfo">0명 선택됨</span>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-sm btn-outline" onclick="selectAll()">전체 선택</button>
+          <button class="btn btn-sm btn-outline" onclick="clearSelection()">선택 해제</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Work Area -->
+    <div class="work-area" id="workArea">
+      <div class="card">
+        <div class="card-body">
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+            </svg>
+            <p>왼쪽에서 학생을 선택하세요</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Modal -->
+  <div class="modal-overlay" id="editModal">
+    <div class="modal">
+      <div class="modal-header" id="editModalTitle">학생 이름 수정</div>
+      <div class="modal-body">
+        <input type="text" id="editInput" maxlength="20" onkeypress="if(event.key==='Enter')confirmEdit()">
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('editModal')">취소</button>
+        <button class="btn btn-primary" onclick="confirmEdit()">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal" style="width:420px;">
+      <div class="modal-header">⚙ 교재 관리</div>
+      <div class="modal-body" id="settingsBody">
+        <div style="margin-bottom:16px;">
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px;">교재 목록</div>
+          <div id="textbookList"></div>
+          <div style="display:flex;gap:8px;margin-top:10px;">
+            <input type="text" id="newTextbook" placeholder="새 교재명" style="flex:1;">
+            <button class="btn btn-primary btn-sm" onclick="addTextbook()">추가</button>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="closeModal('settingsModal')">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- History Modal -->
+  <div class="modal-overlay" id="historyModal">
+    <div class="modal" style="width:600px;max-height:80vh;display:flex;flex-direction:column;">
+      <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>📋 QR 기록 조회</span>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="date" id="historyFrom" class="date-picker" style="background:#f0f3f6;color:var(--text);border:1px solid var(--border);font-size:12px;padding:4px 8px;">
+          <span style="font-size:12px;color:var(--text-light);">~</span>
+          <input type="date" id="historyTo" class="date-picker" style="background:#f0f3f6;color:var(--text);border:1px solid var(--border);font-size:12px;padding:4px 8px;">
+          <button class="btn btn-primary btn-sm" onclick="searchHistory()">조회</button>
+        </div>
+      </div>
+      <div class="modal-body" id="historyBody" style="flex:1;overflow-y:auto;padding:12px 20px;">
+        <div style="text-align:center;padding:30px;color:var(--text-light);font-size:13px;">
+          날짜를 선택하고 조회해주세요
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('historyModal')">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Print Styles -->
+  <style>
+    @media print {
+      body { background: white; }
+      .header, .student-panel, .select-bar, .modal-overlay, .toast { display: none !important; }
+      .main {
+        display: block !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+      }
+      .student-work-card {
+        break-inside: avoid;
+        box-shadow: none !important;
+        border: 1px solid #ccc !important;
+        margin-bottom: 16px !important;
+      }
+      .qr-row { padding: 10px 14px !important; }
+      .qr-row-qr { border: none !important; background: none !important; }
+      .btn-grid .grid-btn:not(.active) { display: none !important; }
+      .btn-grid .grid-btn.active {
+        background: #f0f3f6 !important;
+        color: #333 !important;
+        border-color: #999 !important;
+      }
+      .num-input-wrap button { display: none !important; }
+      .num-input-wrap { border: none !important; }
+      .num-input-wrap input { border: none !important; font-weight: 600; }
+      .student-actions, .icon-btn { display: none !important; }
+    }
+  </style>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
+    import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, where, onSnapshot, setDoc, Timestamp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+
+    // Firebase Config
+    const firebaseConfig = {
+      apiKey: "AIzaSyC5M014PkaOMBGHrWVQP6Q_wb6zOb7I0qs",
+      authDomain: "gosuchatapp.firebaseapp.com",
+      projectId: "gosuchatapp",
+      storageBucket: "gosuchatapp.firebasestorage.app",
+      messagingSenderId: "629416132349",
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app, 'gosuapp251015');
+
+    // Constants
+    const ACADEMY_ID = 'zIoVXK5mAkhzJQX2OZt4fpVwne93';
+    const STUDENTS_COL = `academies/${ACADEMY_ID}/qrStudents`;
+    const TEXTBOOKS_COL = `academies/${ACADEMY_ID}/qrTextbooks`;
+    const RECORDS_COL = `academies/${ACADEMY_ID}/qrRecords`;
+
+    // State
+    let students = [];
+    let selectedStudents = new Set();
+    let textbooks = [];
+    let editingStudentId = null;
+
+    // Initialize
+    window.addEventListener('DOMContentLoaded', () => {
+      // Set today's date
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('workDate').value = today;
+
+      // Date change handler
+      document.getElementById('workDate').addEventListener('change', () => {
+        loadRecordsForDate();
+      });
+
+      // Load data
+      loadStudents();
+      loadTextbooks();
+    });
+
+    // ==================== RECORDS LOADING ====================
+
+    let loadedRecords = {}; // { studentId: { textbook: {...} } }
+
+    async function loadRecordsForDate() {
+      const date = document.getElementById('workDate').value;
+      if (!date) return;
+
+      loadedRecords = {};
+
+      try {
+        const q = query(
+          collection(db, RECORDS_COL),
+          where('date', '==', date)
+        );
+        const snapshot = await getDocs(q);
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          loadedRecords[data.studentId] = {};
+          if (data.records) {
+            data.records.forEach(r => {
+              loadedRecords[data.studentId][r.textbook] = r;
+            });
+          }
+        });
+
+        // Re-render if students are selected
+        if (selectedStudents.size > 0) {
+          renderWorkArea();
+          // After render, restore values from loaded records
+          setTimeout(() => restoreRecordValues(), 100);
+        }
+      } catch (e) {
+        console.error('기록 로드 오류:', e);
+      }
+    }
+
+    function restoreRecordValues() {
+      for (const studentId of selectedStudents) {
+        const recs = loadedRecords[studentId];
+        if (!recs) continue;
+
+        for (const tb of textbooks) {
+          const record = recs[tb.name];
+          if (!record || !record.url) continue;
+
+          const prefix = `${studentId}-${tb.id}`;
+
+          try {
+            const url = new URL(record.url);
+            const pages = url.searchParams.get('pages') || '';
+            const unit = url.searchParams.get('unit') || '';
+
+            if (tb.name === '문법') {
+              const parts = pages.split('-');
+              const startEl = document.getElementById(`start-${prefix}`);
+              const endEl = document.getElementById(`end-${prefix}`);
+              if (startEl && parts[0]) startEl.value = parts[0];
+              if (endEl && parts[1]) endEl.value = parts[1];
+            } else if (tb.name === '독해') {
+              const unitNum = unit.replace('단원', '');
+              const btns = document.querySelectorAll(`#unit-grid-${prefix} .grid-btn`);
+              btns.forEach(b => {
+                b.classList.toggle('active', b.dataset.value === unitNum);
+              });
+              const pageEl = document.getElementById(`page-${prefix}`);
+              if (pageEl) pageEl.value = pages;
+            } else if (tb.name === '클카') {
+              const dayNum = unit.replace('day', '');
+              const btns = document.querySelectorAll(`#day-grid-${prefix} .grid-btn`);
+              btns.forEach(b => {
+                b.classList.toggle('active', b.dataset.value === dayNum);
+              });
+              const pageEl = document.getElementById(`cpage-${prefix}`);
+              if (pageEl) pageEl.value = pages;
+            } else {
+              const pageEl = document.getElementById(`custom-${prefix}`);
+              if (pageEl) pageEl.value = pages;
+            }
+
+            // Generate QR for restored values
+            generateQR(studentId, tb.id);
+          } catch (e) {
+            console.error('복원 오류:', e);
+          }
+        }
+      }
+    }
+
+    // ==================== STUDENTS ====================
+
+    function loadStudents() {
+      const col = collection(db, STUDENTS_COL);
+      const q = query(col, orderBy('name'));
+
+      onSnapshot(q, (snapshot) => {
+        students = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderStudentList();
+      }, (error) => {
+        console.error('학생 목록 로드 오류:', error);
+        document.getElementById('studentList').innerHTML =
+          '<div class="loading" style="color:var(--danger)">로드 실패. 새로고침 해주세요.</div>';
+      });
+    }
+
+    function renderStudentList() {
+      const container = document.getElementById('studentList');
+      document.getElementById('studentCount').textContent = `${students.length}명`;
+
+      if (students.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-light);font-size:13px;">학생을 추가해주세요</div>';
+        return;
+      }
+
+      container.innerHTML = students.map(s => `
+        <div class="student-item ${selectedStudents.has(s.id) ? 'selected' : ''}"
+             onclick="toggleStudent('${s.id}')">
+          <div class="student-checkbox">
+            <svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3"/></svg>
+          </div>
+          <span class="student-name">${escapeHtml(s.name)}</span>
+          <div class="student-actions" onclick="event.stopPropagation()">
+            <button class="icon-btn" onclick="editStudent('${s.id}','${escapeHtml(s.name)}')" title="수정">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+            <button class="icon-btn danger" onclick="deleteStudent('${s.id}','${escapeHtml(s.name)}')" title="삭제">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"/>
+                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      `).join('');
+
+      updateSelectInfo();
+    }
+
+    window.addStudent = async function() {
+      const input = document.getElementById('newStudentName');
+      const name = input.value.trim();
+      if (!name) return showToast('이름을 입력해주세요');
+
+      // 중복 체크
+      if (students.some(s => s.name === name)) {
+        return showToast('이미 존재하는 이름입니다');
+      }
+
+      try {
+        await addDoc(collection(db, STUDENTS_COL), {
+          name: name,
+          createdAt: Timestamp.now()
+        });
+        input.value = '';
+        showToast(`${name} 추가 완료`);
+      } catch (e) {
+        console.error(e);
+        showToast('추가 실패');
+      }
+    };
+
+    window.editStudent = function(id, name) {
+      editingStudentId = id;
+      document.getElementById('editModalTitle').textContent = '학생 이름 수정';
+      document.getElementById('editInput').value = name;
+      openModal('editModal');
+      setTimeout(() => document.getElementById('editInput').select(), 100);
+    };
+
+    window.confirmEdit = async function() {
+      const newName = document.getElementById('editInput').value.trim();
+      if (!newName) return showToast('이름을 입력해주세요');
+      if (!editingStudentId) return;
+
+      try {
+        await updateDoc(doc(db, STUDENTS_COL, editingStudentId), { name: newName });
+        closeModal('editModal');
+        showToast('수정 완료');
+        editingStudentId = null;
+      } catch (e) {
+        console.error(e);
+        showToast('수정 실패');
+      }
+    };
+
+    window.deleteStudent = async function(id, name) {
+      if (!confirm(`"${name}" 학생을 삭제하시겠습니까?`)) return;
+
+      try {
+        await deleteDoc(doc(db, STUDENTS_COL, id));
+        selectedStudents.delete(id);
+        renderWorkArea();
+        showToast(`${name} 삭제 완료`);
+      } catch (e) {
+        console.error(e);
+        showToast('삭제 실패');
+      }
+    };
+
+    window.toggleStudent = function(id) {
+      if (selectedStudents.has(id)) {
+        selectedStudents.delete(id);
+      } else {
+        selectedStudents.add(id);
+      }
+      renderStudentList();
+      renderWorkArea();
+    };
+
+    window.clearSelection = function() {
+      selectedStudents.clear();
+      renderStudentList();
+      renderWorkArea();
+    };
+
+    function updateSelectInfo() {
+      document.getElementById('selectInfo').textContent = `${selectedStudents.size}명 선택됨`;
+    }
+
+    // ==================== TEXTBOOKS ====================
+
+    function loadTextbooks() {
+      const col = collection(db, TEXTBOOKS_COL);
+
+      onSnapshot(col, (snapshot) => {
+        textbooks = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        if (textbooks.length === 0) {
+          // 기본 교재 생성
+          initDefaultTextbooks();
+        }
+        renderWorkArea();
+      });
+    }
+
+    async function initDefaultTextbooks() {
+      const defaults = [
+        { name: '문법', type: 'grammar', order: 1 },
+        { name: '독해', type: 'reading', order: 2 },
+        { name: '클카', type: 'card', order: 3 },
+      ];
+      for (const tb of defaults) {
+        await addDoc(collection(db, TEXTBOOKS_COL), { ...tb, createdAt: Timestamp.now() });
+      }
+    }
+
+    window.addTextbook = async function() {
+      const input = document.getElementById('newTextbook');
+      const name = input.value.trim();
+      if (!name) return;
+
+      try {
+        await addDoc(collection(db, TEXTBOOKS_COL), {
+          name,
+          type: 'custom',
+          order: textbooks.length + 1,
+          createdAt: Timestamp.now()
+        });
+        input.value = '';
+        showToast(`교재 "${name}" 추가 완료`);
+      } catch (e) {
+        showToast('추가 실패');
+      }
+    };
+
+    window.deleteTextbook = async function(id, name) {
+      if (!confirm(`"${name}" 교재를 삭제하시겠습니까?`)) return;
+      try {
+        await deleteDoc(doc(db, TEXTBOOKS_COL, id));
+        showToast('삭제 완료');
+      } catch (e) {
+        showToast('삭제 실패');
+      }
+    };
+
+    window.openSettings = function() {
+      renderTextbookSettings();
+      openModal('settingsModal');
+    };
+
+    function renderTextbookSettings() {
+      const container = document.getElementById('textbookList');
+      container.innerHTML = textbooks.map(tb => `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;">
+          <span style="font-size:14px;">${escapeHtml(tb.name)}</span>
+          <button class="icon-btn danger" onclick="deleteTextbook('${tb.id}','${escapeHtml(tb.name)}')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+            </svg>
+          </button>
+        </div>
+      `).join('');
+    }
+
+    // ==================== WORK AREA ====================
+
+    function renderWorkArea() {
+      const container = document.getElementById('workArea');
+
+      if (selectedStudents.size === 0) {
+        container.innerHTML = `
+          <div class="card"><div class="card-body">
+            <div class="empty-state">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+              </svg>
+              <p>왼쪽에서 학생을 선택하세요</p>
+            </div>
+          </div></div>`;
+        return;
+      }
+
+      const selectedList = students.filter(s => selectedStudents.has(s.id));
+
+      // 일괄 적용 패널 (2명 이상일 때만 표시)
+      let batchHtml = '';
+      if (selectedList.length >= 2) {
+        batchHtml = `
+          <div class="card" style="border-left:3px solid var(--warning);">
+            <div class="card-header" style="background:#fffbf0;">
+              <h2 style="font-size:13px;">⚡ 일괄 적용 <span style="font-weight:400;color:var(--text-light);">— 선택된 ${selectedList.length}명에게 동일한 값 적용</span></h2>
+            </div>
+            <div class="card-body" style="padding:12px 18px;">
+              ${textbooks.sort((a,b) => a.order - b.order).map(tb => `
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;padding:8px 0;${tb !== textbooks[textbooks.length-1] ? 'border-bottom:1px solid #f0f2f4;' : ''}">
+                  <span style="font-size:13px;font-weight:600;color:var(--primary);min-width:44px;">${escapeHtml(tb.name)}</span>
+                  <div style="flex:1;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    ${getBatchInputs(tb)}
+                  </div>
+                  <button class="btn btn-sm" style="background:var(--warning);color:white;white-space:nowrap;" onclick="applyBatch('${tb.id}','${tb.name}')">적용</button>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      container.innerHTML = batchHtml + selectedList.map(student => {
+        const hasRecord = !!loadedRecords[student.id];
+        return `
+        <div class="student-work-card">
+          <div class="student-work-header">
+            <h3>📋 ${escapeHtml(student.name)} ${hasRecord ? '<span style="font-size:11px;color:var(--success);margin-left:6px;">● 기록있음</span>' : ''}</h3>
+            <span style="font-size:12px;color:var(--text-light);">${textbooks.length}개 QR코드</span>
+          </div>
+          ${textbooks.sort((a,b) => a.order - b.order).map(tb => `
+            <div class="qr-row">
+              <div class="qr-row-label">${escapeHtml(tb.name)}</div>
+              <div class="qr-row-inputs">
+                ${getInputsForTextbook(tb, student.id)}
+              </div>
+              <div class="qr-row-qr" id="qr-${student.id}-${tb.id}">
+                <span class="placeholder">QR</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `}).join('');
+    }
+
+    function getInputsForTextbook(tb, studentId) {
+      const prefix = `${studentId}-${tb.id}`;
+
+      if (tb.name === '문법') {
+        return `
+          <div class="input-group">
+            <label>시작</label>
+            <div class="num-input-wrap">
+              <button onclick="adjustNum('start-${prefix}',-1)">−</button>
+              <input type="number" id="start-${prefix}" min="1" max="300" value="1" onchange="onInputChange('${studentId}','${tb.id}')">
+              <button onclick="adjustNum('start-${prefix}',1)">+</button>
+            </div>
+          </div>
+          <span style="color:var(--text-light);">~</span>
+          <div class="input-group">
+            <label>끝</label>
+            <div class="num-input-wrap">
+              <button onclick="adjustNum('end-${prefix}',-1)">−</button>
+              <input type="number" id="end-${prefix}" min="1" max="300" value="1" onchange="onInputChange('${studentId}','${tb.id}')">
+              <button onclick="adjustNum('end-${prefix}',1)">+</button>
+            </div>
+          </div>
+        `;
+      }
+
+      if (tb.name === '독해') {
+        return `
+          <div class="input-group">
+            <label>단원</label>
+            <div class="btn-grid" id="unit-grid-${prefix}">
+              ${Array.from({length:10}, (_,i) => `
+                <button class="grid-btn" onclick="selectUnit(this,'${prefix}')" data-value="${i+1}">${i+1}단원</button>
+              `).join('')}
+            </div>
+          </div>
+          <div class="input-group" style="margin-left:6px;">
+            <label>p.</label>
+            <div class="num-input-wrap">
+              <button onclick="adjustNum('page-${prefix}',-1)">−</button>
+              <input type="number" id="page-${prefix}" min="1" max="300" value="1" onchange="onInputChange('${studentId}','${tb.id}')">
+              <button onclick="adjustNum('page-${prefix}',1)">+</button>
+            </div>
+          </div>
+        `;
+      }
+
+      if (tb.name === '클카') {
+        return `
+          <div class="input-group" style="flex-direction:column;align-items:flex-start;gap:6px;">
+            <label>Day 선택</label>
+            <div class="btn-grid" id="day-grid-${prefix}">
+              ${Array.from({length:30}, (_,i) => `
+                <button class="grid-btn" onclick="selectDay(this,'${prefix}')" data-value="${i+1}" style="min-width:48px;">Day${i+1}</button>
+              `).join('')}
+            </div>
+          </div>
+          <div class="input-group">
+            <label>p.</label>
+            <div class="num-input-wrap">
+              <button onclick="adjustNum('cpage-${prefix}',-1)">−</button>
+              <input type="number" id="cpage-${prefix}" min="1" max="300" value="1" onchange="onInputChange('${studentId}','${tb.id}')">
+              <button onclick="adjustNum('cpage-${prefix}',1)">+</button>
+            </div>
+          </div>
+        `;
+      }
+
+      // Custom textbook - simple page input
+      return `
+        <div class="input-group">
+          <label>p.</label>
+          <div class="num-input-wrap">
+            <button onclick="adjustNum('custom-${prefix}',-1)">−</button>
+            <input type="number" id="custom-${prefix}" min="1" max="300" value="1" onchange="onInputChange('${studentId}','${tb.id}')">
+            <button onclick="adjustNum('custom-${prefix}',1)">+</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function getBatchInputs(tb) {
+      const prefix = `batch-${tb.id}`;
+
+      if (tb.name === '문법') {
+        return `
+          <div class="input-group">
+            <label>시작</label>
+            <div class="num-input-wrap">
+              <button onclick="adjustBatchNum('bstart-${tb.id}',-1)">−</button>
+              <input type="number" id="bstart-${tb.id}" min="1" max="300" value="1">
+              <button onclick="adjustBatchNum('bstart-${tb.id}',1)">+</button>
+            </div>
+          </div>
+          <span style="color:var(--text-light);">~</span>
+          <div class="input-group">
+            <label>끝</label>
+            <div class="num-input-wrap">
+              <button onclick="adjustBatchNum('bend-${tb.id}',-1)">−</button>
+              <input type="number" id="bend-${tb.id}" min="1" max="300" value="1">
+              <button onclick="adjustBatchNum('bend-${tb.id}',1)">+</button>
+            </div>
+          </div>
+        `;
+      }
+
+      if (tb.name === '독해') {
+        return `
+          <div class="input-group">
+            <label>단원</label>
+            <select id="bunit-${tb.id}" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px;">
+              ${Array.from({length:10}, (_,i) => `<option value="${i+1}">${i+1}단원</option>`).join('')}
+            </select>
+          </div>
+          <div class="input-group">
+            <label>p.</label>
+            <div class="num-input-wrap">
+              <button onclick="adjustBatchNum('bpage-${tb.id}',-1)">−</button>
+              <input type="number" id="bpage-${tb.id}" min="1" max="300" value="1">
+              <button onclick="adjustBatchNum('bpage-${tb.id}',1)">+</button>
+            </div>
+          </div>
+        `;
+      }
+
+      if (tb.name === '클카') {
+        return `
+          <div class="input-group">
+            <label>Day</label>
+            <select id="bday-${tb.id}" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px;">
+              ${Array.from({length:30}, (_,i) => `<option value="${i+1}">Day${i+1}</option>`).join('')}
+            </select>
+          </div>
+          <div class="input-group">
+            <label>p.</label>
+            <div class="num-input-wrap">
+              <button onclick="adjustBatchNum('bcpage-${tb.id}',-1)">−</button>
+              <input type="number" id="bcpage-${tb.id}" min="1" max="300" value="1">
+              <button onclick="adjustBatchNum('bcpage-${tb.id}',1)">+</button>
+            </div>
+          </div>
+        `;
+      }
+
+      return `
+        <div class="input-group">
+          <label>p.</label>
+          <div class="num-input-wrap">
+            <button onclick="adjustBatchNum('bcustom-${tb.id}',-1)">−</button>
+            <input type="number" id="bcustom-${tb.id}" min="1" max="300" value="1">
+            <button onclick="adjustBatchNum('bcustom-${tb.id}',1)">+</button>
+          </div>
+        </div>
+      `;
+    }
+
+    window.adjustBatchNum = function(inputId, delta) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      let val = parseInt(input.value) || 1;
+      val = Math.max(1, Math.min(300, val + delta));
+      input.value = val;
+    };
+
+    window.applyBatch = function(tbId, tbName) {
+      const selectedList = students.filter(s => selectedStudents.has(s.id));
+      if (selectedList.length === 0) return;
+
+      for (const student of selectedList) {
+        const prefix = `${student.id}-${tbId}`;
+
+        if (tbName === '문법') {
+          const bStart = document.getElementById(`bstart-${tbId}`);
+          const bEnd = document.getElementById(`bend-${tbId}`);
+          const sStart = document.getElementById(`start-${prefix}`);
+          const sEnd = document.getElementById(`end-${prefix}`);
+          if (bStart && sStart) sStart.value = bStart.value;
+          if (bEnd && sEnd) sEnd.value = bEnd.value;
+        } else if (tbName === '독해') {
+          const bUnit = document.getElementById(`bunit-${tbId}`);
+          const bPage = document.getElementById(`bpage-${tbId}`);
+          if (bUnit) {
+            const btns = document.querySelectorAll(`#unit-grid-${prefix} .grid-btn`);
+            btns.forEach(b => b.classList.toggle('active', b.dataset.value === bUnit.value));
+          }
+          const sPage = document.getElementById(`page-${prefix}`);
+          if (bPage && sPage) sPage.value = bPage.value;
+        } else if (tbName === '클카') {
+          const bDay = document.getElementById(`bday-${tbId}`);
+          const bPage = document.getElementById(`bcpage-${tbId}`);
+          if (bDay) {
+            const btns = document.querySelectorAll(`#day-grid-${prefix} .grid-btn`);
+            btns.forEach(b => b.classList.toggle('active', b.dataset.value === bDay.value));
+          }
+          const sPage = document.getElementById(`cpage-${prefix}`);
+          if (bPage && sPage) sPage.value = bPage.value;
+        } else {
+          const bCustom = document.getElementById(`bcustom-${tbId}`);
+          const sCustom = document.getElementById(`custom-${prefix}`);
+          if (bCustom && sCustom) sCustom.value = bCustom.value;
+        }
+
+        generateQR(student.id, tbId);
+      }
+
+      showToast(`${tbName} 값을 ${selectedList.length}명에게 일괄 적용 ✓`);
+    };
+
+    // ==================== INPUT HANDLERS ====================
+
+    window.adjustNum = function(inputId, delta) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      let val = parseInt(input.value) || 1;
+      val = Math.max(1, Math.min(300, val + delta));
+      input.value = val;
+
+      // Extract studentId and tbId from inputId
+      // Format: "start-STUDENTID-TBID" or "end-STUDENTID-TBID" etc.
+      const dashIdx = inputId.indexOf('-');
+      if (dashIdx === -1) return;
+      const rest = inputId.substring(dashIdx + 1);
+      const lastDash = rest.lastIndexOf('-');
+      if (lastDash === -1) return;
+      const studentId = rest.substring(0, lastDash);
+      const tbId = rest.substring(lastDash + 1);
+      generateQR(studentId, tbId);
+    };
+
+    window.selectUnit = function(btn, prefix) {
+      const grid = btn.closest('.btn-grid');
+      grid.querySelectorAll('.grid-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const lastDash = prefix.lastIndexOf('-');
+      generateQR(prefix.substring(0, lastDash), prefix.substring(lastDash + 1));
+    };
+
+    window.selectDay = function(btn, prefix) {
+      const grid = btn.closest('.btn-grid');
+      grid.querySelectorAll('.grid-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      const lastDash = prefix.lastIndexOf('-');
+      generateQR(prefix.substring(0, lastDash), prefix.substring(lastDash + 1));
+    };
+
+    window.onInputChange = function(studentId, tbId) {
+      generateQR(studentId, tbId);
+    };
+
+    // ==================== QR CODE GENERATION ====================
+
+    function getQRData(studentId, tbId) {
+      const student = students.find(s => s.id === studentId);
+      const tb = textbooks.find(t => t.id === tbId);
+      if (!student || !tb) return null;
+
+      const prefix = `${studentId}-${tbId}`;
+      const studentName = student.name;
+
+      if (tb.name === '문법') {
+        const startEl = document.getElementById(`start-${prefix}`);
+        const endEl = document.getElementById(`end-${prefix}`);
+        const startPage = startEl ? startEl.value : '1';
+        const endPage = endEl ? endEl.value : '1';
+        const url = `gosuapp://scan?subject=문법&pages=${startPage}-${endPage}&studentName=${encodeURIComponent(studentName)}`;
+        return { url, display: `문법 p.${startPage}~${endPage}` };
+      }
+
+      if (tb.name === '독해') {
+        const activeUnit = document.querySelector(`#unit-grid-${prefix} .grid-btn.active`);
+        const unit = activeUnit ? activeUnit.dataset.value : '';
+        const pageEl = document.getElementById(`page-${prefix}`);
+        const page = pageEl ? pageEl.value : '1';
+        if (!unit) return null;
+        const url = `gosuapp://scan?subject=독해&unit=${unit}단원&pages=${page}&studentName=${encodeURIComponent(studentName)}`;
+        return { url, display: `독해 ${unit}단원 p.${page}` };
+      }
+
+      if (tb.name === '클카') {
+        const activeDay = document.querySelector(`#day-grid-${prefix} .grid-btn.active`);
+        const day = activeDay ? activeDay.dataset.value : '';
+        const pageEl = document.getElementById(`cpage-${prefix}`);
+        const page = pageEl ? pageEl.value : '1';
+        if (!day) return null;
+        const url = `gosuapp://scan?subject=클카&unit=day${day}&pages=${page}&studentName=${encodeURIComponent(studentName)}`;
+        return { url, display: `클카 Day${day} p.${page}` };
+      }
+
+      // Custom
+      const pageEl = document.getElementById(`custom-${prefix}`);
+      const page = pageEl ? pageEl.value : '1';
+      const url = `gosuapp://scan?subject=${encodeURIComponent(tb.name)}&pages=${page}&studentName=${encodeURIComponent(studentName)}`;
+      return { url, display: `${tb.name} p.${page}` };
+    }
+
+    function generateQR(studentId, tbId) {
+      const container = document.getElementById(`qr-${studentId}-${tbId}`);
+      if (!container) return;
+
+      const qrData = getQRData(studentId, tbId);
+      if (!qrData) {
+        container.innerHTML = '<span class="placeholder">항목 선택</span>';
+        return;
+      }
+
+      // Clear previous
+      container.innerHTML = '';
+
+      try {
+        new QRCode(container, {
+          text: qrData.url,
+          width: 72,
+          height: 72,
+          colorDark: '#778899',
+          colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M,
+        });
+      } catch (e) {
+        console.error('QR 생성 오류:', e);
+        container.innerHTML = '<span class="placeholder">오류</span>';
+      }
+    }
+
+    // ==================== SAVE RECORDS ====================
+
+    window.saveAllRecords = async function() {
+      const date = document.getElementById('workDate').value;
+      if (!date) return showToast('날짜를 선택해주세요');
+
+      const selectedList = students.filter(s => selectedStudents.has(s.id));
+      if (selectedList.length === 0) return showToast('학생을 선택해주세요');
+
+      let savedCount = 0;
+      let errorCount = 0;
+
+      for (const student of selectedList) {
+        const records = [];
+        for (const tb of textbooks) {
+          const qrData = getQRData(student.id, tb.id);
+          if (qrData) {
+            records.push({
+              textbook: tb.name,
+              url: qrData.url,
+              display: qrData.display,
+            });
+          }
+        }
+
+        if (records.length === 0) continue;
+
+        try {
+          const docId = `${date}_${student.id}`;
+          await setDoc(doc(db, RECORDS_COL, docId), {
+            studentId: student.id,
+            studentName: student.name,
+            date: date,
+            records: records,
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now(),
+          }, { merge: true });
+          savedCount++;
+        } catch (e) {
+          console.error('저장 오류:', e);
+          errorCount++;
+        }
+      }
+
+      if (errorCount > 0) {
+        showToast(`${savedCount}명 저장 완료, ${errorCount}명 실패`);
+      } else {
+        showToast(`${savedCount}명 QR 기록 저장 완료 ✓`);
+      }
+    };
+
+    // ==================== UTILITIES ====================
+
+    function openModal(id) {
+      document.getElementById(id).classList.add('active');
+    }
+
+    window.closeModal = function(id) {
+      document.getElementById(id).classList.remove('active');
+    };
+
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // ==================== SELECT ALL ====================
+
+    window.selectAll = function() {
+      if (selectedStudents.size === students.length) {
+        // 이미 전체 선택이면 해제
+        selectedStudents.clear();
+      } else {
+        students.forEach(s => selectedStudents.add(s.id));
+      }
+      renderStudentList();
+      renderWorkArea();
+      // Restore saved records after render
+      setTimeout(() => restoreRecordValues(), 150);
+    };
+
+    // ==================== HISTORY ====================
+
+    window.openHistory = function() {
+      // 기본 범위: 최근 7일
+      const today = new Date();
+      const weekAgo = new Date(today);
+      weekAgo.setDate(weekAgo.getDate() - 7);
+
+      document.getElementById('historyTo').value = today.toISOString().split('T')[0];
+      document.getElementById('historyFrom').value = weekAgo.toISOString().split('T')[0];
+
+      openModal('historyModal');
+      searchHistory();
+    };
+
+    window.searchHistory = async function() {
+      const from = document.getElementById('historyFrom').value;
+      const to = document.getElementById('historyTo').value;
+      const body = document.getElementById('historyBody');
+
+      if (!from || !to) {
+        body.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-light);">날짜를 선택해주세요</div>';
+        return;
+      }
+
+      body.innerHTML = '<div class="loading"><div class="spinner"></div>조회 중...</div>';
+
+      try {
+        const q = query(
+          collection(db, RECORDS_COL),
+          where('date', '>=', from),
+          where('date', '<=', to),
+          orderBy('date', 'desc')
+        );
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+          body.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-light);">해당 기간 기록이 없습니다</div>';
+          return;
+        }
+
+        // 날짜별로 그룹핑
+        const grouped = {};
+        snapshot.forEach(docSnap => {
+          const data = docSnap.data();
+          if (!grouped[data.date]) grouped[data.date] = [];
+          grouped[data.date].push(data);
+        });
+
+        let html = '';
+        for (const [date, records] of Object.entries(grouped)) {
+          const dateObj = new Date(date + 'T00:00:00');
+          const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+          const dayName = dayNames[dateObj.getDay()];
+
+          html += `
+            <div style="margin-bottom:16px;">
+              <div style="font-size:13px;font-weight:700;color:var(--primary-dark);margin-bottom:8px;padding-bottom:6px;border-bottom:2px solid var(--border);">
+                📅 ${date} (${dayName}) — ${records.length}명
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px;">
+          `;
+
+          for (const rec of records) {
+            const items = (rec.records || []).map(r =>
+              `<span style="display:inline-block;padding:2px 8px;background:#f0f3f6;border-radius:4px;font-size:11px;margin:2px;">${escapeHtml(r.display)}</span>`
+            ).join('');
+
+            html += `
+              <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#fafbfc;border-radius:6px;border:1px solid #f0f2f4;">
+                <span style="font-weight:600;font-size:13px;min-width:60px;">${escapeHtml(rec.studentName)}</span>
+                <div style="flex:1;display:flex;flex-wrap:wrap;gap:2px;">${items}</div>
+                <button class="btn btn-sm btn-outline" onclick="loadHistoryRecord('${date}','${rec.studentId}')" style="font-size:11px;white-space:nowrap;">불러오기</button>
+              </div>
+            `;
+          }
+
+          html += '</div></div>';
+        }
+
+        body.innerHTML = html;
+      } catch (e) {
+        console.error('히스토리 조회 오류:', e);
+        body.innerHTML = '<div style="text-align:center;padding:20px;color:var(--danger);">조회 실패: ' + e.message + '</div>';
+      }
+    };
+
+    window.loadHistoryRecord = function(date, studentId) {
+      // 날짜 변경 + 해당 학생 선택 + 기록 불러오기
+      document.getElementById('workDate').value = date;
+
+      if (!selectedStudents.has(studentId)) {
+        selectedStudents.add(studentId);
+      }
+
+      closeModal('historyModal');
+      renderStudentList();
+      renderWorkArea();
+
+      // 기록 불러오기
+      loadRecordsForDate().then(() => {
+        setTimeout(() => restoreRecordValues(), 150);
+      });
+
+      showToast('기록을 불러왔습니다');
+    };
+
+    // ==================== PRINT ====================
+
+    window.printSelected = function() {
+      if (selectedStudents.size === 0) {
+        return showToast('인쇄할 학생을 선택해주세요');
+      }
+
+      // 모든 선택된 학생의 QR이 생성되었는지 확인
+      const selectedList = students.filter(s => selectedStudents.has(s.id));
+      let hasQR = false;
+      for (const student of selectedList) {
+        for (const tb of textbooks) {
+          const container = document.getElementById(`qr-${student.id}-${tb.id}`);
+          if (container && container.querySelector('canvas')) {
+            hasQR = true;
+            break;
+          }
+        }
+        if (hasQR) break;
+      }
+
+      if (!hasQR) {
+        return showToast('QR코드가 생성된 항목이 없습니다');
+      }
+
+      window.print();
+    };
+
+    // Expose to window for inline handlers
+    window.showToast = showToast;
+  </script>
+
+</body>
+</html>
