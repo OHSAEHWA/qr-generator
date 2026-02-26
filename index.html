@@ -3812,29 +3812,37 @@ var qrcode = function() {
         qr.make();
 
         var moduleCount = qr.getModuleCount();
-        var size = 72;
-        var cellSize = size / moduleCount;
+        // 고해상도: 셀당 8px (실제 캔버스 크기 = moduleCount * 8)
+        var cellSize = 8;
+        var canvasSize = moduleCount * cellSize;
+        var margin = cellSize * 2; // 여백 2셀
+        var totalSize = canvasSize + margin * 2;
 
         var canvas = document.createElement('canvas');
-        canvas.width = size;
-        canvas.height = size;
+        canvas.width = totalSize;
+        canvas.height = totalSize;
+        // CSS로 표시 크기 제한 (선명도 유지)
+        canvas.style.width = '76px';
+        canvas.style.height = '76px';
+        canvas.style.imageRendering = 'pixelated';
         canvas.style.borderRadius = '4px';
+
         var ctx = canvas.getContext('2d');
 
         // White background
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, size, size);
+        ctx.fillRect(0, 0, totalSize, totalSize);
 
-        // Draw modules with custom color
-        ctx.fillStyle = '#778899';
+        // Draw modules - 검정색으로 스캔 인식률 극대화
+        ctx.fillStyle = '#000000';
         for (var row = 0; row < moduleCount; row++) {
           for (var col = 0; col < moduleCount; col++) {
             if (qr.isDark(row, col)) {
               ctx.fillRect(
-                col * cellSize,
-                row * cellSize,
-                cellSize + 0.5,
-                cellSize + 0.5
+                margin + col * cellSize,
+                margin + row * cellSize,
+                cellSize,
+                cellSize
               );
             }
           }
