@@ -399,6 +399,13 @@
       align-items: center;
       justify-content: center;
       background: #fafbfc;
+      cursor: pointer;
+      transition: box-shadow 0.15s, border-color 0.15s;
+    }
+
+    .qr-row-qr:hover {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(119,136,153,0.15);
     }
 
     .qr-row-qr canvas {
@@ -408,6 +415,143 @@
     .qr-row-qr .placeholder {
       font-size: 11px;
       color: #bdc3c7;
+    }
+
+    /* QR Popup */
+    .qr-popup-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 300;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+
+    .qr-popup-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .qr-popup {
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      transform: scale(0.8);
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      cursor: default;
+      max-width: 90vw;
+    }
+
+    .qr-popup-overlay.active .qr-popup {
+      transform: scale(1);
+    }
+
+    .qr-popup canvas {
+      display: block;
+      margin: 0 auto;
+    }
+
+    .qr-popup-label {
+      margin-top: 16px;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .qr-popup-sub {
+      margin-top: 6px;
+      font-size: 13px;
+      color: var(--text-light);
+    }
+
+    .qr-popup-hint {
+      margin-top: 16px;
+      font-size: 11px;
+      color: #bdc3c7;
+    }
+
+    /* QR Triple Popup */
+    .qr-triple-container {
+      background: white;
+      border-radius: 20px;
+      padding: 32px 40px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      transform: scale(0.8);
+      transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      cursor: default;
+      max-width: 95vw;
+    }
+
+    .qr-popup-overlay.active .qr-triple-container {
+      transform: scale(1);
+    }
+
+    .qr-triple-header {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 24px;
+    }
+
+    .qr-triple-grid {
+      display: flex;
+      gap: 32px;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    .qr-triple-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .qr-triple-item canvas {
+      display: block;
+    }
+
+    .qr-triple-label {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--primary-dark);
+    }
+
+    .qr-triple-detail {
+      font-size: 12px;
+      color: var(--text-light);
+      max-width: 200px;
+    }
+
+    .qr-triple-empty {
+      width: 200px;
+      height: 200px;
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #bdc3c7;
+      font-size: 13px;
+    }
+
+    @media (max-width: 768px) {
+      .qr-triple-grid {
+        flex-direction: column;
+        gap: 24px;
+        align-items: center;
+      }
+      .qr-triple-container {
+        padding: 24px 20px;
+      }
     }
 
     /* Input Controls */
@@ -3032,6 +3176,25 @@ var qrcode = function() {
     </div>
   </div>
 
+  <!-- QR Popup (단일) -->
+  <div class="qr-popup-overlay" id="qrPopup" onclick="closeQRPopup(event)">
+    <div class="qr-popup" onclick="event.stopPropagation()">
+      <div id="qrPopupCanvas"></div>
+      <div class="qr-popup-label" id="qrPopupLabel"></div>
+      <div class="qr-popup-sub" id="qrPopupSub"></div>
+      <div class="qr-popup-hint">화면을 탭하면 닫힙니다</div>
+    </div>
+  </div>
+
+  <!-- QR Triple Popup (3개 동시) -->
+  <div class="qr-popup-overlay" id="qrTriple" onclick="closeTripleQR(event)">
+    <div class="qr-triple-container" onclick="event.stopPropagation()">
+      <div class="qr-triple-header" id="qrTripleHeader"></div>
+      <div class="qr-triple-grid" id="qrTripleGrid"></div>
+      <div class="qr-popup-hint" style="margin-top:20px;">화면을 탭하면 닫힙니다</div>
+    </div>
+  </div>
+
   <!-- History Modal -->
   <div class="modal-overlay" id="historyModal">
     <div class="modal" style="width:600px;max-height:80vh;display:flex;flex-direction:column;">
@@ -3062,7 +3225,7 @@ var qrcode = function() {
   <style>
     @media print {
       body { background: white; }
-      .header, .student-panel, .select-bar, .modal-overlay, .toast { display: none !important; }
+      .header, .student-panel, .select-bar, .modal-overlay, .toast, .qr-popup-overlay, #qrTriple { display: none !important; }
       .main {
         display: block !important;
         max-width: 100% !important;
@@ -3597,7 +3760,10 @@ var qrcode = function() {
         <div class="student-work-card">
           <div class="student-work-header">
             <h3>📋 ${escapeHtml(student.name)} ${hasRecord ? '<span style="font-size:11px;color:var(--success);margin-left:6px;">● 기록있음</span>' : ''}</h3>
-            <span style="font-size:12px;color:var(--text-light);">${textbooks.length}개 QR코드</span>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button class="btn btn-sm btn-primary" onclick="openTripleQR('${student.id}','${escapeHtml(student.name)}')" style="font-size:12px;">📱 QR 스캔</button>
+              <span style="font-size:12px;color:var(--text-light);">${textbooks.length}개</span>
+            </div>
           </div>
           ${textbooks.sort((a,b) => a.order - b.order).map(tb => `
             <div class="qr-row">
@@ -3605,7 +3771,7 @@ var qrcode = function() {
               <div class="qr-row-inputs">
                 ${getInputsForTextbook(tb, student.id)}
               </div>
-              <div class="qr-row-qr" id="qr-${student.id}-${tb.id}">
+              <div class="qr-row-qr" id="qr-${student.id}-${tb.id}" onclick="openQRPopup('${student.id}','${tb.id}','${escapeHtml(student.name)}','${escapeHtml(tb.name)}')">
                 <span class="placeholder">QR</span>
               </div>
             </div>
@@ -3875,12 +4041,16 @@ var qrcode = function() {
       const studentName = student.name;
       const enc = encodeURIComponent;
 
+      // gosuapp://homework 형식 사용
+      // 파서에서: textbook = subject 파라미터, chapter = unit에서 추출
+      // 표시: "문법 3단원 p.5 (1회차)" 또는 "문법 p.1-5 (1회차)"
+
       if (tb.name === '문법') {
         const startEl = document.getElementById(`start-${prefix}`);
         const endEl = document.getElementById(`end-${prefix}`);
         const startPage = startEl ? startEl.value : '1';
         const endPage = endEl ? endEl.value : '1';
-        const url = `gosuapp://scan?subject=${enc('문법')}&textbook=${enc(tb.name)}&pages=${startPage}-${endPage}&studentName=${enc(studentName)}`;
+        const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&pages=${startPage}-${endPage}&studentName=${enc(studentName)}&session=1`;
         return { url, display: `문법 p.${startPage}~${endPage}` };
       }
 
@@ -3890,7 +4060,7 @@ var qrcode = function() {
         const pageEl = document.getElementById(`page-${prefix}`);
         const page = pageEl ? pageEl.value : '1';
         if (!unit) return null;
-        const url = `gosuapp://scan?subject=${enc('독해')}&textbook=${enc(tb.name)}&unit=${enc(unit + '단원')}&pages=${page}&studentName=${enc(studentName)}`;
+        const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&unit=${enc(unit + '단원')}&pages=${page}&studentName=${enc(studentName)}&session=1`;
         return { url, display: `독해 ${unit}단원 p.${page}` };
       }
 
@@ -3900,14 +4070,14 @@ var qrcode = function() {
         const pageEl = document.getElementById(`cpage-${prefix}`);
         const page = pageEl ? pageEl.value : '1';
         if (!day) return null;
-        const url = `gosuapp://scan?subject=${enc('클카')}&textbook=${enc(tb.name)}&unit=day${day}&pages=${page}&studentName=${enc(studentName)}`;
+        const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&unit=day${day}&pages=${page}&studentName=${enc(studentName)}&session=1`;
         return { url, display: `클카 Day${day} p.${page}` };
       }
 
       // Custom
       const pageEl = document.getElementById(`custom-${prefix}`);
       const page = pageEl ? pageEl.value : '1';
-      const url = `gosuapp://scan?subject=${enc(tb.name)}&textbook=${enc(tb.name)}&pages=${page}&studentName=${enc(studentName)}`;
+      const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&pages=${page}&studentName=${enc(studentName)}&session=1`;
       return { url, display: `${tb.name} p.${page}` };
     }
 
@@ -4169,6 +4339,164 @@ var qrcode = function() {
       });
 
       showToast('기록을 불러왔습니다');
+    };
+
+    // ==================== QR POPUP ====================
+
+    window.openQRPopup = function(studentId, tbId, studentName, tbName) {
+      const qrData = getQRData(studentId, tbId);
+      if (!qrData) return showToast('QR코드를 먼저 생성해주세요');
+
+      const overlay = document.getElementById('qrPopup');
+      const canvasContainer = document.getElementById('qrPopupCanvas');
+      const label = document.getElementById('qrPopupLabel');
+      const sub = document.getElementById('qrPopupSub');
+
+      canvasContainer.innerHTML = '';
+
+      try {
+        var qr = qrcode(0, 'L');
+        qr.addData(qrData.url, 'Byte');
+        qr.make();
+
+        var moduleCount = qr.getModuleCount();
+        var cellSize = 12;
+        var canvasSize = moduleCount * cellSize;
+        var margin = cellSize * 4;
+        var totalSize = canvasSize + margin * 2;
+
+        var canvas = document.createElement('canvas');
+        canvas.width = totalSize;
+        canvas.height = totalSize;
+        canvas.style.width = '260px';
+        canvas.style.height = '260px';
+        canvas.style.imageRendering = 'pixelated';
+
+        var ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, totalSize, totalSize);
+
+        ctx.fillStyle = '#000000';
+        for (var row = 0; row < moduleCount; row++) {
+          for (var col = 0; col < moduleCount; col++) {
+            if (qr.isDark(row, col)) {
+              ctx.fillRect(
+                margin + col * cellSize,
+                margin + row * cellSize,
+                cellSize,
+                cellSize
+              );
+            }
+          }
+        }
+
+        canvasContainer.appendChild(canvas);
+      } catch (e) {
+        canvasContainer.innerHTML = '<div style="padding:40px;color:var(--danger);">QR 생성 실패</div>';
+      }
+
+      label.textContent = `${studentName} — ${tbName}`;
+      sub.textContent = qrData.display;
+
+      overlay.classList.add('active');
+    };
+
+    window.closeQRPopup = function(e) {
+      // 팝업 바깥 영역 클릭 시 닫기
+      if (e && e.target !== document.getElementById('qrPopup')) return;
+      document.getElementById('qrPopup').classList.remove('active');
+    };
+
+    // ESC키로 팝업 닫기
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        document.getElementById('qrPopup').classList.remove('active');
+        document.getElementById('qrTriple').classList.remove('active');
+      }
+    });
+
+    // ==================== TRIPLE QR POPUP ====================
+
+    window.openTripleQR = function(studentId, studentName) {
+      const grid = document.getElementById('qrTripleGrid');
+      const header = document.getElementById('qrTripleHeader');
+
+      header.textContent = `📱 ${studentName}`;
+      grid.innerHTML = '';
+
+      const sortedTbs = [...textbooks].sort((a,b) => a.order - b.order);
+
+      for (const tb of sortedTbs) {
+        const qrData = getQRData(studentId, tb.id);
+
+        const item = document.createElement('div');
+        item.className = 'qr-triple-item';
+
+        if (!qrData) {
+          item.innerHTML = `
+            <div class="qr-triple-label">${escapeHtml(tb.name)}</div>
+            <div class="qr-triple-empty">항목을 선택하세요</div>
+          `;
+        } else {
+          // QR 생성
+          const canvasWrap = document.createElement('div');
+          try {
+            var qr = qrcode(0, 'L');
+            qr.addData(qrData.url, 'Byte');
+            qr.make();
+
+            var moduleCount = qr.getModuleCount();
+            var cellSize = 12;
+            var canvasSize = moduleCount * cellSize;
+            var margin = cellSize * 4;
+            var totalSize = canvasSize + margin * 2;
+
+            var canvas = document.createElement('canvas');
+            canvas.width = totalSize;
+            canvas.height = totalSize;
+            canvas.style.width = '200px';
+            canvas.style.height = '200px';
+            canvas.style.imageRendering = 'pixelated';
+            canvas.style.borderRadius = '8px';
+
+            var ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, totalSize, totalSize);
+            ctx.fillStyle = '#000000';
+            for (var row = 0; row < moduleCount; row++) {
+              for (var col = 0; col < moduleCount; col++) {
+                if (qr.isDark(row, col)) {
+                  ctx.fillRect(
+                    margin + col * cellSize,
+                    margin + row * cellSize,
+                    cellSize, cellSize
+                  );
+                }
+              }
+            }
+            canvasWrap.appendChild(canvas);
+          } catch (e) {
+            canvasWrap.innerHTML = '<div class="qr-triple-empty">생성 실패</div>';
+          }
+
+          item.innerHTML = `<div class="qr-triple-label">${escapeHtml(tb.name)}</div>`;
+          item.appendChild(canvasWrap);
+
+          const detail = document.createElement('div');
+          detail.className = 'qr-triple-detail';
+          detail.textContent = qrData.display;
+          item.appendChild(detail);
+        }
+
+        grid.appendChild(item);
+      }
+
+      document.getElementById('qrTriple').classList.add('active');
+    };
+
+    window.closeTripleQR = function(e) {
+      if (e && e.target !== document.getElementById('qrTriple')) return;
+      document.getElementById('qrTriple').classList.remove('active');
     };
 
     // ==================== PRINT ====================
