@@ -3132,7 +3132,124 @@ var qrcode = function() {
       // Load data
       loadStudents();
       loadTextbooks();
+
+      // 지난주 같은 요일 기록 확인 (학생 로드 후 실행)
+      setTimeout(() => checkLastWeekRecords(), 2000);
     });
+
+    // ==================== LAST WEEK RECORDS ====================
+
+    let lastWeekData = null; // { date, records: [{studentId, studentName, records}] }
+
+    async function checkLastWeekRecords() {
+      const today = new Date();
+      const lastWeek = new Date(today);
+      lastWeek.setDate(lastWeek.getDate() - 7);
+      const lastWeekDate = lastWeek.toISOString().split('T')[0];
+
+      // 오늘 기록이 이미 있는지 먼저 확인
+      const todayDate = today.toISOString().split('T')[0];
+      try {
+        const todayQ = query(
+          collection(db, RECORDS_COL),
+          where('date', '==', todayDate)
+        );
+        const todaySnap = await getDocs(todayQ);
+        if (!todaySnap.empty) {
+          // 오늘 기록이 이미 있으면 그걸 불러오기
+          loadRecordsForDate();
+          // 오늘 기록에 있는 학생들 자동 선택
+          todaySnap.forEach(docSnap => {
+            const data = docSnap.data();
+            if (data.studentId) selectedStudents.add(data.studentId);
+          });
+          renderStudentList();
+          renderWorkArea();
+          setTimeout(() => restoreRecordValues(), 200);
+          return;
+        }
+
+        // 오늘 기록 없으면 지난주 같은 요일 확인
+        const lwQ = query(
+          collection(db, RECORDS_COL),
+          where('date', '==', lastWeekDate)
+        );
+        const lwSnap = await getDocs(lwQ);
+
+        if (lwSnap.empty) return; // 지난주 기록도 없음
+
+        const lwRecords = [];
+        lwSnap.forEach(docSnap => {
+          lwRecords.push(docSnap.data());
+        });
+
+        lastWeekData = { date: lastWeekDate, records: lwRecords };
+
+        // 배너 표시
+        showLastWeekBanner(lastWeekDate, lwRecords);
+      } catch (e) {
+        console.error('지난주 기록 확인 오류:', e);
+      }
+    }
+
+    function showLastWeekBanner(date, records) {
+      const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
+      const dateObj = new Date(date + 'T00:00:00');
+      const dayName = dayNames[dateObj.getDay()];
+      const names = records.map(r => r.studentName).join(', ');
+
+      const banner = document.createElement('div');
+      banner.id = 'lastWeekBanner';
+      banner.style.cssText = 'background:linear-gradient(135deg,#fff8e1,#fff3c4);border:1px solid #f9d71c;border-radius:10px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 2px 8px rgba(249,215,28,0.15);';
+      banner.innerHTML = `
+        <div style="flex:1;">
+          <div style="font-size:14px;font-weight:600;color:#7c6a00;margin-bottom:4px;">📅 지난주 ${dayName}요일 (${date}) 기록이 있습니다</div>
+          <div style="font-size:12px;color:#a08c00;">${records.length}명: ${names}</div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-sm" style="background:#f9d71c;color:#5a4e00;font-weight:600;" onclick="applyLastWeekRecords()">불러오기</button>
+          <button class="btn btn-sm btn-outline" style="font-size:11px;" onclick="dismissLastWeekBanner()">닫기</button>
+        </div>
+      `;
+
+      const workArea = document.getElementById('workArea');
+      workArea.insertBefore(banner, workArea.firstChild);
+    }
+
+    window.applyLastWeekRecords = async function() {
+      if (!lastWeekData) return;
+
+      // 학생 선택
+      for (const rec of lastWeekData.records) {
+        if (rec.studentId) {
+          selectedStudents.add(rec.studentId);
+        }
+      }
+
+      // loadedRecords에 지난주 데이터를 오늘 날짜용으로 세팅
+      loadedRecords = {};
+      for (const rec of lastWeekData.records) {
+        loadedRecords[rec.studentId] = {};
+        if (rec.records) {
+          rec.records.forEach(r => {
+            loadedRecords[rec.studentId][r.textbook] = r;
+          });
+        }
+      }
+
+      renderStudentList();
+      renderWorkArea();
+      setTimeout(() => restoreRecordValues(), 200);
+
+      dismissLastWeekBanner();
+      showToast(`지난주 기록 ${lastWeekData.records.length}명 불러옴 ✓`);
+    };
+
+    window.dismissLastWeekBanner = function() {
+      const banner = document.getElementById('lastWeekBanner');
+      if (banner) banner.remove();
+      lastWeekData = null;
+    };
 
     // ==================== RECORDS LOADING ====================
 
@@ -3756,13 +3873,15 @@ var qrcode = function() {
 
       const prefix = `${studentId}-${tbId}`;
       const studentName = student.name;
+      const encodedName = encodeURIComponent(studentName);
+      const encodedTextbook = encodeURIComponent(tb.name);
 
       if (tb.name === '문법') {
         const startEl = document.getElementById(`start-${prefix}`);
         const endEl = document.getElementById(`end-${prefix}`);
         const startPage = startEl ? startEl.value : '1';
         const endPage = endEl ? endEl.value : '1';
-        const url = `gosuapp://scan?subject=문법&pages=${startPage}-${endPage}&studentName=${encodeURIComponent(studentName)}`;
+        const url = `gosuapp://scan?subject=문법&textbook=${encodedTextbook}&pages=${startPage}-${endPage}&studentName=${encodedName}`;
         return { url, display: `문법 p.${startPage}~${endPage}` };
       }
 
@@ -3772,7 +3891,7 @@ var qrcode = function() {
         const pageEl = document.getElementById(`page-${prefix}`);
         const page = pageEl ? pageEl.value : '1';
         if (!unit) return null;
-        const url = `gosuapp://scan?subject=독해&unit=${unit}단원&pages=${page}&studentName=${encodeURIComponent(studentName)}`;
+        const url = `gosuapp://scan?subject=독해&textbook=${encodedTextbook}&unit=${unit}단원&pages=${page}&studentName=${encodedName}`;
         return { url, display: `독해 ${unit}단원 p.${page}` };
       }
 
@@ -3782,14 +3901,14 @@ var qrcode = function() {
         const pageEl = document.getElementById(`cpage-${prefix}`);
         const page = pageEl ? pageEl.value : '1';
         if (!day) return null;
-        const url = `gosuapp://scan?subject=클카&unit=day${day}&pages=${page}&studentName=${encodeURIComponent(studentName)}`;
+        const url = `gosuapp://scan?subject=클카&textbook=${encodedTextbook}&unit=day${day}&pages=${page}&studentName=${encodedName}`;
         return { url, display: `클카 Day${day} p.${page}` };
       }
 
       // Custom
       const pageEl = document.getElementById(`custom-${prefix}`);
       const page = pageEl ? pageEl.value : '1';
-      const url = `gosuapp://scan?subject=${encodeURIComponent(tb.name)}&pages=${page}&studentName=${encodeURIComponent(studentName)}`;
+      const url = `gosuapp://scan?subject=${encodedTextbook}&textbook=${encodedTextbook}&pages=${page}&studentName=${encodedName}`;
       return { url, display: `${tb.name} p.${page}` };
     }
 
