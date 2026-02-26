@@ -3873,15 +3873,14 @@ var qrcode = function() {
 
       const prefix = `${studentId}-${tbId}`;
       const studentName = student.name;
-      const encodedName = encodeURIComponent(studentName);
-      const encodedTextbook = encodeURIComponent(tb.name);
+      const enc = encodeURIComponent;
 
       if (tb.name === '문법') {
         const startEl = document.getElementById(`start-${prefix}`);
         const endEl = document.getElementById(`end-${prefix}`);
         const startPage = startEl ? startEl.value : '1';
         const endPage = endEl ? endEl.value : '1';
-        const url = `gosuapp://scan?subject=문법&textbook=${encodedTextbook}&pages=${startPage}-${endPage}&studentName=${encodedName}`;
+        const url = `gosuapp://scan?subject=${enc('문법')}&textbook=${enc(tb.name)}&pages=${startPage}-${endPage}&studentName=${enc(studentName)}`;
         return { url, display: `문법 p.${startPage}~${endPage}` };
       }
 
@@ -3891,7 +3890,7 @@ var qrcode = function() {
         const pageEl = document.getElementById(`page-${prefix}`);
         const page = pageEl ? pageEl.value : '1';
         if (!unit) return null;
-        const url = `gosuapp://scan?subject=독해&textbook=${encodedTextbook}&unit=${unit}단원&pages=${page}&studentName=${encodedName}`;
+        const url = `gosuapp://scan?subject=${enc('독해')}&textbook=${enc(tb.name)}&unit=${enc(unit + '단원')}&pages=${page}&studentName=${enc(studentName)}`;
         return { url, display: `독해 ${unit}단원 p.${page}` };
       }
 
@@ -3901,14 +3900,14 @@ var qrcode = function() {
         const pageEl = document.getElementById(`cpage-${prefix}`);
         const page = pageEl ? pageEl.value : '1';
         if (!day) return null;
-        const url = `gosuapp://scan?subject=클카&textbook=${encodedTextbook}&unit=day${day}&pages=${page}&studentName=${encodedName}`;
+        const url = `gosuapp://scan?subject=${enc('클카')}&textbook=${enc(tb.name)}&unit=day${day}&pages=${page}&studentName=${enc(studentName)}`;
         return { url, display: `클카 Day${day} p.${page}` };
       }
 
       // Custom
       const pageEl = document.getElementById(`custom-${prefix}`);
       const page = pageEl ? pageEl.value : '1';
-      const url = `gosuapp://scan?subject=${encodedTextbook}&textbook=${encodedTextbook}&pages=${page}&studentName=${encodedName}`;
+      const url = `gosuapp://scan?subject=${enc(tb.name)}&textbook=${enc(tb.name)}&pages=${page}&studentName=${enc(studentName)}`;
       return { url, display: `${tb.name} p.${page}` };
     }
 
@@ -3925,24 +3924,26 @@ var qrcode = function() {
       container.innerHTML = '';
 
       try {
-        // qrcode-generator API
-        var qr = qrcode(0, 'M');
-        qr.addData(qrData.url);
+        // URL을 UTF-8 바이트 배열로 변환
+        var utf8Bytes = unescape(encodeURIComponent(qrData.url));
+
+        // qrcode-generator: typeNumber 0=auto, L=낮은 에러보정(빠른인식)
+        var qr = qrcode(0, 'L');
+        qr.addData(qrData.url, 'Byte');
         qr.make();
 
         var moduleCount = qr.getModuleCount();
-        // 고해상도: 셀당 8px (실제 캔버스 크기 = moduleCount * 8)
-        var cellSize = 8;
+        // 고해상도: 셀당 10px
+        var cellSize = 10;
         var canvasSize = moduleCount * cellSize;
-        var margin = cellSize * 2; // 여백 2셀
+        var margin = cellSize * 4; // QR 표준 quiet zone 4셀
         var totalSize = canvasSize + margin * 2;
 
         var canvas = document.createElement('canvas');
         canvas.width = totalSize;
         canvas.height = totalSize;
-        // CSS로 표시 크기 제한 (선명도 유지)
-        canvas.style.width = '76px';
-        canvas.style.height = '76px';
+        canvas.style.width = '80px';
+        canvas.style.height = '80px';
         canvas.style.imageRendering = 'pixelated';
         canvas.style.borderRadius = '4px';
 
@@ -3952,7 +3953,7 @@ var qrcode = function() {
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, totalSize, totalSize);
 
-        // Draw modules - 검정색으로 스캔 인식률 극대화
+        // Draw modules - 순수 검정 (스캔 최적)
         ctx.fillStyle = '#000000';
         for (var row = 0; row < moduleCount; row++) {
           for (var col = 0; col < moduleCount; col++) {
@@ -3969,7 +3970,7 @@ var qrcode = function() {
 
         container.appendChild(canvas);
       } catch (e) {
-        console.error('QR 생성 오류:', e);
+        console.error('QR 생성 오류:', e, 'URL:', qrData.url);
         container.innerHTML = '<span class="placeholder">오류</span>';
       }
     }
