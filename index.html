@@ -4021,15 +4021,18 @@ var qrcode = function() {
         activeTabId = selectedList[0].id;
       }
 
-      // 일괄 적용 패널 (2명 이상일 때만 표시)
+      // 일괄 적용 패널 (2명 이상일 때, 접이식)
       let batchHtml = '';
       if (selectedList.length >= 2) {
         batchHtml = `
           <div class="card" style="border-left:3px solid var(--warning);">
-            <div class="card-header" style="background:#fffbf0;">
-              <h2 style="font-size:13px;">⚡ 일괄 적용 <span style="font-weight:400;color:var(--text-light);">— 선택된 ${selectedList.length}명에게 동일한 값 적용</span></h2>
+            <div class="card-header" style="background:#fffbf0;cursor:pointer;user-select:none;" onclick="toggleBatchPanel()">
+              <h2 style="font-size:13px;display:flex;align-items:center;gap:6px;">
+                <span id="batchArrow" style="transition:transform 0.2s;display:inline-block;">▶</span>
+                ⚡ 일괄 적용 <span style="font-weight:400;color:var(--text-light);">— ${selectedList.length}명</span>
+              </h2>
             </div>
-            <div class="card-body" style="padding:12px 18px;">
+            <div id="batchBody" style="display:none;padding:12px 18px;">
               ${textbooks.sort((a,b) => a.order - b.order).map(tb => `
                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;padding:8px 0;${tb !== textbooks[textbooks.length-1] ? 'border-bottom:1px solid #f0f2f4;' : ''}">
                   <span style="font-size:13px;font-weight:600;color:var(--primary);min-width:44px;">${escapeHtml(tb.name)}</span>
@@ -4343,6 +4346,15 @@ var qrcode = function() {
       let val = parseInt(input.value) || 1;
       val = Math.max(1, Math.min(300, val + delta));
       input.value = val;
+    };
+
+    let batchOpen = false;
+    window.toggleBatchPanel = function() {
+      batchOpen = !batchOpen;
+      const body = document.getElementById('batchBody');
+      const arrow = document.getElementById('batchArrow');
+      if (body) body.style.display = batchOpen ? 'block' : 'none';
+      if (arrow) arrow.style.transform = batchOpen ? 'rotate(90deg)' : '';
     };
 
     window.applyBatch = function(tbId, tbName) {
