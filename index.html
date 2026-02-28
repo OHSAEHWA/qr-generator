@@ -339,6 +339,58 @@
       font-size: 14px;
     }
 
+    .student-tabs {
+      display: flex;
+      gap: 6px;
+      padding: 0 4px 12px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+
+    .student-tabs::-webkit-scrollbar { display: none; }
+
+    .student-tab {
+      padding: 8px 18px;
+      border-radius: 20px;
+      border: 1.5px solid var(--border);
+      background: white;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-light);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+      flex-shrink: 0;
+    }
+
+    .student-tab:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .student-tab.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+      font-weight: 600;
+    }
+
+    .student-tab .tab-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      margin-left: 5px;
+      vertical-align: middle;
+    }
+
+    .student-tab .tab-dot.has-record { background: var(--success); }
+    .student-tab.active .tab-dot.has-record { background: #b0ffb0; }
+    .student-tab .tab-dot.has-prev { background: #f0ad4e; }
+    .student-tab.active .tab-dot.has-prev { background: #ffe0a0; }
+
     .student-work-card {
       border: 1px solid var(--border);
       border-radius: var(--radius);
@@ -368,10 +420,28 @@
       padding: 14px 18px;
       border-bottom: 1px solid #f0f2f4;
       gap: 16px;
+      transition: background 0.2s;
     }
 
     .qr-row:last-child {
       border-bottom: none;
+    }
+
+    .qr-row.prev-record {
+      background: #fff8f0;
+      border-left: 3px solid #f0ad4e;
+    }
+
+    .prev-badge {
+      display: inline-block;
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: #f0ad4e;
+      color: white;
+      font-weight: 600;
+      margin-left: 6px;
+      vertical-align: middle;
     }
 
     .qr-row-label {
@@ -3392,7 +3462,7 @@ var qrcode = function() {
   <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
-    import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, where, onSnapshot, setDoc, Timestamp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+    import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, where, limit, onSnapshot, setDoc, Timestamp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
 
     // Firebase Config
     const firebaseConfig = {
@@ -3439,117 +3509,72 @@ var qrcode = function() {
 
     // ==================== LAST WEEK RECORDS ====================
 
-    let lastWeekData = null; // { date, records: [{studentId, studentName, records}] }
+    let lastWeekData = null;
 
     async function checkLastWeekRecords() {
       const today = new Date();
       const lastWeek = new Date(today);
       lastWeek.setDate(lastWeek.getDate() - 7);
       const lastWeekDate = lastWeek.toISOString().split('T')[0];
-
-      // 오늘 기록이 이미 있는지 먼저 확인
       const todayDate = today.toISOString().split('T')[0];
+
       try {
+        // 1) 오늘 기록이 이미 있는지 확인
         const todayQ = query(
           collection(db, RECORDS_COL),
           where('date', '==', todayDate)
         );
         const todaySnap = await getDocs(todayQ);
+
         if (!todaySnap.empty) {
-          // 오늘 기록이 이미 있으면 그걸 불러오기
-          loadRecordsForDate();
-          // 오늘 기록에 있는 학생들 자동 선택
+          // 오늘 기록 → 자동 선택 + 복원
           todaySnap.forEach(docSnap => {
             const data = docSnap.data();
             if (data.studentId) selectedStudents.add(data.studentId);
           });
+          await loadRecordsForDate();
           renderStudentList();
           renderWorkArea();
           setTimeout(() => restoreRecordValues(), 200);
+          showToast(`오늘 기록 ${todaySnap.size}명 불러옴 ✓`);
           return;
         }
 
-        // 오늘 기록 없으면 지난주 같은 요일 확인
+        // 2) 지난주 같은 요일 기록 확인
         const lwQ = query(
           collection(db, RECORDS_COL),
           where('date', '==', lastWeekDate)
         );
         const lwSnap = await getDocs(lwQ);
-
-        if (lwSnap.empty) return; // 지난주 기록도 없음
+        if (lwSnap.empty) return;
 
         const lwRecords = [];
-        lwSnap.forEach(docSnap => {
-          lwRecords.push(docSnap.data());
-        });
+        lwSnap.forEach(docSnap => lwRecords.push(docSnap.data()));
 
-        lastWeekData = { date: lastWeekDate, records: lwRecords };
+        // 자동 적용: 학생 선택 + 이전 기록 세팅
+        for (const rec of lwRecords) {
+          if (rec.studentId) {
+            selectedStudents.add(rec.studentId);
+            prevRecords[rec.studentId] = { date: rec.date };
+            if (rec.records) {
+              rec.records.forEach(r => {
+                prevRecords[rec.studentId][r.textbook] = r;
+              });
+            }
+          }
+        }
 
-        // 배너 표시
-        showLastWeekBanner(lastWeekDate, lwRecords);
+        renderStudentList();
+        renderWorkArea();
+        setTimeout(() => restorePrevRecords(), 200);
+
+        const dayNames = ['일','월','화','수','목','금','토'];
+        const dayName = dayNames[new Date(lastWeekDate + 'T00:00:00').getDay()];
+        showToast(`지난 ${dayName}요일(${lastWeekDate}) 기록 ${lwRecords.length}명 불러옴 ✓`);
       } catch (e) {
-        console.error('지난주 기록 확인 오류:', e);
+        console.error('자동 기록 확인 오류:', e);
       }
     }
-
-    function showLastWeekBanner(date, records) {
-      const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
-      const dateObj = new Date(date + 'T00:00:00');
-      const dayName = dayNames[dateObj.getDay()];
-      const names = records.map(r => r.studentName).join(', ');
-
-      const banner = document.createElement('div');
-      banner.id = 'lastWeekBanner';
-      banner.style.cssText = 'background:linear-gradient(135deg,#fff8e1,#fff3c4);border:1px solid #f9d71c;border-radius:10px;padding:14px 20px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 2px 8px rgba(249,215,28,0.15);';
-      banner.innerHTML = `
-        <div style="flex:1;">
-          <div style="font-size:14px;font-weight:600;color:#7c6a00;margin-bottom:4px;">📅 지난주 ${dayName}요일 (${date}) 기록이 있습니다</div>
-          <div style="font-size:12px;color:#a08c00;">${records.length}명: ${names}</div>
-        </div>
-        <div style="display:flex;gap:8px;">
-          <button class="btn btn-sm" style="background:#f9d71c;color:#5a4e00;font-weight:600;" onclick="applyLastWeekRecords()">불러오기</button>
-          <button class="btn btn-sm btn-outline" style="font-size:11px;" onclick="dismissLastWeekBanner()">닫기</button>
-        </div>
-      `;
-
-      const workArea = document.getElementById('workArea');
-      workArea.insertBefore(banner, workArea.firstChild);
-    }
-
-    window.applyLastWeekRecords = async function() {
-      if (!lastWeekData) return;
-
-      // 학생 선택
-      for (const rec of lastWeekData.records) {
-        if (rec.studentId) {
-          selectedStudents.add(rec.studentId);
-        }
-      }
-
-      // loadedRecords에 지난주 데이터를 오늘 날짜용으로 세팅
-      loadedRecords = {};
-      for (const rec of lastWeekData.records) {
-        loadedRecords[rec.studentId] = {};
-        if (rec.records) {
-          rec.records.forEach(r => {
-            loadedRecords[rec.studentId][r.textbook] = r;
-          });
-        }
-      }
-
-      renderStudentList();
-      renderWorkArea();
-      setTimeout(() => restoreRecordValues(), 200);
-
-      dismissLastWeekBanner();
-      showToast(`지난주 기록 ${lastWeekData.records.length}명 불러옴 ✓`);
-    };
-
-    window.dismissLastWeekBanner = function() {
-      const banner = document.getElementById('lastWeekBanner');
-      if (banner) banner.remove();
-      lastWeekData = null;
-    };
 
     // ==================== RECORDS LOADING ====================
 
@@ -3753,15 +3778,135 @@ var qrcode = function() {
       }
     };
 
-    window.toggleStudent = function(id) {
+    // 학생별 이전 기록 소스 추적: { studentId: { textbook: { date, ...record } } }
+    let prevRecords = {};
+
+    window.toggleStudent = async function(id) {
       if (selectedStudents.has(id)) {
         selectedStudents.delete(id);
+        delete prevRecords[id];
       } else {
         selectedStudents.add(id);
+        // 오늘 기록이 없으면 최근 기록 검색
+        await loadLatestRecordForStudent(id);
       }
       renderStudentList();
       renderWorkArea();
+      setTimeout(() => {
+        restoreRecordValues();
+        restorePrevRecords();
+      }, 150);
     };
+
+    async function loadLatestRecordForStudent(studentId) {
+      const todayDate = document.getElementById('workDate').value;
+      if (!todayDate) return;
+
+      // 오늘 기록이 이미 있는지 확인
+      if (loadedRecords[studentId]) return;
+
+      try {
+        // 최근 기록 검색 (오늘 이전, 이 학생의 가장 최근 1개)
+        const q = query(
+          collection(db, RECORDS_COL),
+          where('studentId', '==', studentId),
+          where('date', '<', todayDate),
+          orderBy('date', 'desc'),
+          limit(1)
+        );
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) return;
+
+        const data = snapshot.docs[0].data();
+        prevRecords[studentId] = { date: data.date };
+
+        if (data.records) {
+          data.records.forEach(r => {
+            prevRecords[studentId][r.textbook] = r;
+          });
+        }
+      } catch (e) {
+        console.error('최근 기록 검색 오류:', e);
+      }
+    }
+
+    function restorePrevRecords() {
+      for (const studentId of selectedStudents) {
+        // 오늘 기록이 있으면 이전 기록 불러올 필요 없음
+        if (loadedRecords[studentId]) continue;
+
+        const prev = prevRecords[studentId];
+        if (!prev) continue;
+
+        for (const tb of textbooks) {
+          const record = prev[tb.name];
+          if (!record || !record.url) continue;
+
+          const prefix = `${studentId}-${tb.id}`;
+
+          try {
+            const url = new URL(record.url);
+            const pages = url.searchParams.get('pages') || '';
+            const unit = url.searchParams.get('unit') || '';
+
+            if (tb.name === '문법') {
+              const parts = pages.split('-');
+              const startEl = document.getElementById(`start-${prefix}`);
+              const endEl = document.getElementById(`end-${prefix}`);
+              if (startEl && parts[0]) startEl.value = parts[0];
+              if (endEl && parts[1]) endEl.value = parts[1];
+            } else if (tb.name === '독해') {
+              const unitNum = unit.replace('단원', '');
+              const btns = document.querySelectorAll(`#unit-grid-${prefix} .grid-btn`);
+              btns.forEach(b => b.classList.toggle('active', b.dataset.value === unitNum));
+              const pageEl = document.getElementById(`page-${prefix}`);
+              if (pageEl) pageEl.value = pages;
+            } else if (tb.name === '클카') {
+              const dayNum = unit.replace('day', '');
+              const btns = document.querySelectorAll(`#day-grid-${prefix} .grid-btn`);
+              btns.forEach(b => b.classList.toggle('active', b.dataset.value === dayNum));
+              const pageEl = document.getElementById(`cpage-${prefix}`);
+              if (pageEl) pageEl.value = pages;
+            } else {
+              const pageEl = document.getElementById(`custom-${prefix}`);
+              if (pageEl) pageEl.value = pages;
+            }
+
+            // QR 생성
+            generateQR(studentId, tb.id);
+
+            // 이전 기록 뱃지 표시
+            markAsPrevRecord(studentId, tb.id, prev.date);
+          } catch (e) {
+            console.error('이전 기록 복원 오류:', e);
+          }
+        }
+      }
+    }
+
+    function markAsPrevRecord(studentId, tbId, prevDate) {
+      const row = document.getElementById(`qr-${studentId}-${tbId}`)?.closest('.qr-row');
+      if (!row) return;
+
+      row.classList.add('prev-record');
+      row.dataset.prevSource = `${studentId}-${tbId}`;
+
+      // 라벨에 이전 뱃지 추가
+      const label = row.querySelector('.qr-row-label');
+      if (label && !label.querySelector('.prev-badge')) {
+        label.innerHTML += `<span class="prev-badge">${prevDate}</span>`;
+      }
+    }
+
+    function clearPrevMark(studentId, tbId) {
+      const row = document.getElementById(`qr-${studentId}-${tbId}`)?.closest('.qr-row');
+      if (!row) return;
+
+      row.classList.remove('prev-record');
+      const badge = row.querySelector('.prev-badge');
+      if (badge) badge.remove();
+    }
 
     window.clearSelection = function() {
       selectedStudents.clear();
@@ -3850,10 +3995,13 @@ var qrcode = function() {
 
     // ==================== WORK AREA ====================
 
+    let activeTabId = null; // 현재 활성 탭 학생 ID
+
     function renderWorkArea() {
       const container = document.getElementById('workArea');
 
       if (selectedStudents.size === 0) {
+        activeTabId = null;
         container.innerHTML = `
           <div class="card"><div class="card-body">
             <div class="empty-state">
@@ -3867,6 +4015,11 @@ var qrcode = function() {
       }
 
       const selectedList = students.filter(s => selectedStudents.has(s.id));
+
+      // activeTab이 없거나 선택 해제된 경우 첫번째 학생으로
+      if (!activeTabId || !selectedStudents.has(activeTabId)) {
+        activeTabId = selectedList[0].id;
+      }
 
       // 일괄 적용 패널 (2명 이상일 때만 표시)
       let batchHtml = '';
@@ -3891,14 +4044,31 @@ var qrcode = function() {
         `;
       }
 
-      container.innerHTML = batchHtml + selectedList.map(student => {
-        const hasRecord = !!loadedRecords[student.id];
-        return `
-        <div class="student-work-card">
+      // 학생 탭 바
+      const tabsHtml = `
+        <div class="student-tabs">
+          ${selectedList.map(s => {
+            const isActive = s.id === activeTabId;
+            const hasRecord = !!loadedRecords[s.id];
+            const hasPrev = !hasRecord && !!prevRecords[s.id];
+            const dotClass = hasRecord ? 'has-record' : (hasPrev ? 'has-prev' : '');
+            const dot = dotClass ? `<span class="tab-dot ${dotClass}"></span>` : '';
+            return `<button class="student-tab ${isActive ? 'active' : ''}" onclick="switchTab('${s.id}')">${escapeHtml(s.name)}${dot}</button>`;
+          }).join('')}
+        </div>
+      `;
+
+      // 활성 학생 카드만 표시
+      const activeStudent = students.find(s => s.id === activeTabId);
+      let cardHtml = '';
+      if (activeStudent) {
+        const hasRecord = !!loadedRecords[activeStudent.id];
+        cardHtml = `
+        <div class="student-work-card" id="card-${activeStudent.id}">
           <div class="student-work-header">
-            <h3>📋 ${escapeHtml(student.name)} ${hasRecord ? '<span style="font-size:11px;color:var(--success);margin-left:6px;">● 기록있음</span>' : ''}</h3>
+            <h3>📋 ${escapeHtml(activeStudent.name)} ${hasRecord ? '<span style="font-size:11px;color:var(--success);margin-left:6px;">● 기록있음</span>' : ''}</h3>
             <div style="display:flex;align-items:center;gap:8px;">
-              <button class="btn btn-sm btn-primary" onclick="openTripleQR('${student.id}','${escapeHtml(student.name)}')" style="font-size:12px;">📱 QR 스캔</button>
+              <button class="btn btn-sm btn-primary" onclick="openTripleQR('${activeStudent.id}','${escapeHtml(activeStudent.name)}')" style="font-size:12px;">📱 QR 스캔</button>
               <span style="font-size:12px;color:var(--text-light);">${textbooks.length}개</span>
             </div>
           </div>
@@ -3906,15 +4076,110 @@ var qrcode = function() {
             <div class="qr-row">
               <div class="qr-row-label">${escapeHtml(tb.name)}</div>
               <div class="qr-row-inputs">
-                ${getInputsForTextbook(tb, student.id)}
+                ${getInputsForTextbook(tb, activeStudent.id)}
               </div>
-              <div class="qr-row-qr" id="qr-${student.id}-${tb.id}" onclick="openQRPopup('${student.id}','${tb.id}','${escapeHtml(student.name)}','${escapeHtml(tb.name)}')">
+              <div class="qr-row-qr" id="qr-${activeStudent.id}-${tb.id}" onclick="openQRPopup('${activeStudent.id}','${tb.id}','${escapeHtml(activeStudent.name)}','${escapeHtml(tb.name)}')">
                 <span class="placeholder">QR</span>
               </div>
             </div>
           `).join('')}
-        </div>
-      `}).join('');
+        </div>`;
+      }
+
+      container.innerHTML = batchHtml + tabsHtml + cardHtml;
+    }
+
+    window.switchTab = function(studentId) {
+      // 현재 탭 입력값 저장 (DOM에서 사라지기 전에)
+      saveTabState(activeTabId);
+      activeTabId = studentId;
+      renderWorkArea();
+      // 복원
+      setTimeout(() => {
+        restoreRecordValues();
+        restorePrevRecords();
+        restoreTabState(studentId);
+      }, 50);
+    };
+
+    // 탭 전환 시 입력값 보존
+    let tabStates = {}; // { studentId: { tbId: { values } } }
+
+    function saveTabState(studentId) {
+      if (!studentId) return;
+      tabStates[studentId] = {};
+
+      for (const tb of textbooks) {
+        const prefix = `${studentId}-${tb.id}`;
+        const state = {};
+
+        if (tb.name === '문법') {
+          const s = document.getElementById(`start-${prefix}`);
+          const e = document.getElementById(`end-${prefix}`);
+          if (s) state.start = s.value;
+          if (e) state.end = e.value;
+        } else if (tb.name === '독해') {
+          const activeBtn = document.querySelector(`#unit-grid-${prefix} .grid-btn.active`);
+          state.unit = activeBtn ? activeBtn.dataset.value : '';
+          const p = document.getElementById(`page-${prefix}`);
+          if (p) state.page = p.value;
+        } else if (tb.name === '클카') {
+          const activeBtn = document.querySelector(`#day-grid-${prefix} .grid-btn.active`);
+          state.day = activeBtn ? activeBtn.dataset.value : '';
+          const p = document.getElementById(`cpage-${prefix}`);
+          if (p) state.page = p.value;
+        } else {
+          const p = document.getElementById(`custom-${prefix}`);
+          if (p) state.page = p.value;
+        }
+
+        tabStates[studentId][tb.id] = state;
+      }
+    }
+
+    function restoreTabState(studentId) {
+      if (!studentId || !tabStates[studentId]) return;
+
+      for (const tb of textbooks) {
+        const prefix = `${studentId}-${tb.id}`;
+        const state = tabStates[studentId][tb.id];
+        if (!state) continue;
+
+        if (tb.name === '문법') {
+          const s = document.getElementById(`start-${prefix}`);
+          const e = document.getElementById(`end-${prefix}`);
+          if (s && state.start) s.value = state.start;
+          if (e && state.end) e.value = state.end;
+        } else if (tb.name === '독해') {
+          if (state.unit) {
+            const btns = document.querySelectorAll(`#unit-grid-${prefix} .grid-btn`);
+            btns.forEach(b => b.classList.toggle('active', b.dataset.value === state.unit));
+          }
+          const p = document.getElementById(`page-${prefix}`);
+          if (p && state.page) p.value = state.page;
+        } else if (tb.name === '클카') {
+          if (state.day) {
+            const btns = document.querySelectorAll(`#day-grid-${prefix} .grid-btn`);
+            btns.forEach(b => b.classList.toggle('active', b.dataset.value === state.day));
+          }
+          const p = document.getElementById(`cpage-${prefix}`);
+          if (p && state.page) p.value = state.page;
+        } else {
+          const p = document.getElementById(`custom-${prefix}`);
+          if (p && state.page) p.value = state.page;
+        }
+
+        generateQR(studentId, tb.id);
+      }
+
+      // 이전 기록 뱃지 복원
+      if (prevRecords[studentId] && !loadedRecords[studentId]) {
+        for (const tb of textbooks) {
+          if (prevRecords[studentId][tb.name]) {
+            markAsPrevRecord(studentId, tb.id, prevRecords[studentId].date);
+          }
+        }
+      }
     }
 
     function getInputsForTextbook(tb, studentId) {
@@ -4084,41 +4349,56 @@ var qrcode = function() {
       const selectedList = students.filter(s => selectedStudents.has(s.id));
       if (selectedList.length === 0) return;
 
+      // 일괄 적용 값 읽기
+      let batchValues = {};
+      if (tbName === '문법') {
+        batchValues.start = document.getElementById(`bstart-${tbId}`)?.value || '1';
+        batchValues.end = document.getElementById(`bend-${tbId}`)?.value || '1';
+      } else if (tbName === '독해') {
+        batchValues.unit = document.getElementById(`bunit-${tbId}`)?.value || '';
+        batchValues.page = document.getElementById(`bpage-${tbId}`)?.value || '1';
+      } else if (tbName === '클카') {
+        batchValues.day = document.getElementById(`bday-${tbId}`)?.value || '';
+        batchValues.page = document.getElementById(`bcpage-${tbId}`)?.value || '1';
+      } else {
+        batchValues.page = document.getElementById(`bcustom-${tbId}`)?.value || '1';
+      }
+
       for (const student of selectedList) {
         const prefix = `${student.id}-${tbId}`;
 
-        if (tbName === '문법') {
-          const bStart = document.getElementById(`bstart-${tbId}`);
-          const bEnd = document.getElementById(`bend-${tbId}`);
-          const sStart = document.getElementById(`start-${prefix}`);
-          const sEnd = document.getElementById(`end-${prefix}`);
-          if (bStart && sStart) sStart.value = bStart.value;
-          if (bEnd && sEnd) sEnd.value = bEnd.value;
-        } else if (tbName === '독해') {
-          const bUnit = document.getElementById(`bunit-${tbId}`);
-          const bPage = document.getElementById(`bpage-${tbId}`);
-          if (bUnit) {
-            const btns = document.querySelectorAll(`#unit-grid-${prefix} .grid-btn`);
-            btns.forEach(b => b.classList.toggle('active', b.dataset.value === bUnit.value));
+        if (student.id === activeTabId) {
+          // 활성 탭: DOM 직접 수정
+          if (tbName === '문법') {
+            const s = document.getElementById(`start-${prefix}`);
+            const e = document.getElementById(`end-${prefix}`);
+            if (s) s.value = batchValues.start;
+            if (e) e.value = batchValues.end;
+          } else if (tbName === '독해') {
+            if (batchValues.unit) {
+              const btns = document.querySelectorAll(`#unit-grid-${prefix} .grid-btn`);
+              btns.forEach(b => b.classList.toggle('active', b.dataset.value === batchValues.unit));
+            }
+            const p = document.getElementById(`page-${prefix}`);
+            if (p) p.value = batchValues.page;
+          } else if (tbName === '클카') {
+            if (batchValues.day) {
+              const btns = document.querySelectorAll(`#day-grid-${prefix} .grid-btn`);
+              btns.forEach(b => b.classList.toggle('active', b.dataset.value === batchValues.day));
+            }
+            const p = document.getElementById(`cpage-${prefix}`);
+            if (p) p.value = batchValues.page;
+          } else {
+            const p = document.getElementById(`custom-${prefix}`);
+            if (p) p.value = batchValues.page;
           }
-          const sPage = document.getElementById(`page-${prefix}`);
-          if (bPage && sPage) sPage.value = bPage.value;
-        } else if (tbName === '클카') {
-          const bDay = document.getElementById(`bday-${tbId}`);
-          const bPage = document.getElementById(`bcpage-${tbId}`);
-          if (bDay) {
-            const btns = document.querySelectorAll(`#day-grid-${prefix} .grid-btn`);
-            btns.forEach(b => b.classList.toggle('active', b.dataset.value === bDay.value));
-          }
-          const sPage = document.getElementById(`cpage-${prefix}`);
-          if (bPage && sPage) sPage.value = bPage.value;
+          generateQR(student.id, tbId);
+          clearPrevMark(student.id, tbId);
         } else {
-          const bCustom = document.getElementById(`bcustom-${tbId}`);
-          const sCustom = document.getElementById(`custom-${prefix}`);
-          if (bCustom && sCustom) sCustom.value = bCustom.value;
+          // 비활성 탭: tabStates에 저장
+          if (!tabStates[student.id]) tabStates[student.id] = {};
+          tabStates[student.id][tbId] = { ...batchValues };
         }
-
-        generateQR(student.id, tbId);
       }
 
       showToast(`${tbName} 값을 ${selectedList.length}명에게 일괄 적용 ✓`);
@@ -4143,6 +4423,7 @@ var qrcode = function() {
       const studentId = rest.substring(0, lastDash);
       const tbId = rest.substring(lastDash + 1);
       generateQR(studentId, tbId);
+      clearPrevMark(studentId, tbId);
     };
 
     window.selectUnit = function(btn, prefix) {
@@ -4151,7 +4432,10 @@ var qrcode = function() {
       btn.classList.add('active');
 
       const lastDash = prefix.lastIndexOf('-');
-      generateQR(prefix.substring(0, lastDash), prefix.substring(lastDash + 1));
+      const sId = prefix.substring(0, lastDash);
+      const tId = prefix.substring(lastDash + 1);
+      generateQR(sId, tId);
+      clearPrevMark(sId, tId);
     };
 
     window.selectDay = function(btn, prefix) {
@@ -4160,11 +4444,15 @@ var qrcode = function() {
       btn.classList.add('active');
 
       const lastDash = prefix.lastIndexOf('-');
-      generateQR(prefix.substring(0, lastDash), prefix.substring(lastDash + 1));
+      const sId = prefix.substring(0, lastDash);
+      const tId = prefix.substring(lastDash + 1);
+      generateQR(sId, tId);
+      clearPrevMark(sId, tId);
     };
 
     window.onInputChange = function(studentId, tbId) {
       generateQR(studentId, tbId);
+      clearPrevMark(studentId, tbId);
     };
 
     // ==================== QR CODE GENERATION ====================
@@ -4291,19 +4579,53 @@ var qrcode = function() {
       const selectedList = students.filter(s => selectedStudents.has(s.id));
       if (selectedList.length === 0) return showToast('학생을 선택해주세요');
 
+      // 현재 활성 탭 상태 저장
+      saveTabState(activeTabId);
+
       let savedCount = 0;
       let errorCount = 0;
 
       for (const student of selectedList) {
         const records = [];
-        for (const tb of textbooks) {
-          const qrData = getQRData(student.id, tb.id);
-          if (qrData) {
-            records.push({
-              textbook: tb.name,
-              url: qrData.url,
-              display: qrData.display,
-            });
+
+        // 활성 탭이면 DOM에서 직접 getQRData
+        if (student.id === activeTabId) {
+          for (const tb of textbooks) {
+            const qrData = getQRData(student.id, tb.id);
+            if (qrData) {
+              records.push({ textbook: tb.name, url: qrData.url, display: qrData.display });
+            }
+          }
+        } else {
+          // 비활성 탭은 tabStates에서 QR URL 재구성
+          const state = tabStates[student.id];
+          if (!state) continue;
+
+          for (const tb of textbooks) {
+            const s = state[tb.id];
+            if (!s) continue;
+
+            const enc = encodeURIComponent;
+            let url = null;
+            let display = '';
+
+            if (tb.name === '문법' && s.start && s.end) {
+              url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&pages=${s.start}-${s.end}&studentName=${enc(student.name)}&session=1`;
+              display = `문법 p.${s.start}~${s.end}`;
+            } else if (tb.name === '독해' && s.unit && s.page) {
+              url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&unit=${enc(s.unit + '단원')}&pages=${s.page}&studentName=${enc(student.name)}&session=1`;
+              display = `독해 ${s.unit}단원 p.${s.page}`;
+            } else if (tb.name === '클카' && s.day && s.page) {
+              url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&unit=day${s.day}&pages=${s.page}&studentName=${enc(student.name)}&session=1`;
+              display = `클카 Day${s.day} p.${s.page}`;
+            } else if (s.page) {
+              url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&pages=${s.page}&studentName=${enc(student.name)}&session=1`;
+              display = `${tb.name} p.${s.page}`;
+            }
+
+            if (url) {
+              records.push({ textbook: tb.name, url, display });
+            }
           }
         }
 
@@ -4358,17 +4680,22 @@ var qrcode = function() {
 
     // ==================== SELECT ALL ====================
 
-    window.selectAll = function() {
+    window.selectAll = async function() {
       if (selectedStudents.size === students.length) {
-        // 이미 전체 선택이면 해제
         selectedStudents.clear();
+        prevRecords = {};
       } else {
-        students.forEach(s => selectedStudents.add(s.id));
+        for (const s of students) {
+          selectedStudents.add(s.id);
+          await loadLatestRecordForStudent(s.id);
+        }
       }
       renderStudentList();
       renderWorkArea();
-      // Restore saved records after render
-      setTimeout(() => restoreRecordValues(), 150);
+      setTimeout(() => {
+        restoreRecordValues();
+        restorePrevRecords();
+      }, 150);
     };
 
     // ==================== HISTORY ====================
