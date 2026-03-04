@@ -457,14 +457,15 @@
 
     .tb-setting-btn {
       border: none;
-      background: none;
-      font-size: 11px;
-      color: #adb5bd;
+      background: #f0f2f4;
+      font-size: 12px;
+      color: #868e96;
       cursor: pointer;
-      padding: 0;
+      padding: 4px 8px;
+      border-radius: 4px;
       line-height: 1;
     }
-    .tb-setting-btn:hover { color: var(--primary); }
+    .tb-setting-btn:hover { color: var(--primary); background: #e8ebf0; }
 
     .qr-row-inputs {
       flex: 1;
@@ -3419,10 +3420,10 @@ var qrcode = function() {
 
   <!-- Textbook Setting Modal -->
   <div class="modal-overlay" id="tbSettingModal">
-    <div class="modal" style="width:400px;">
+    <div class="modal" style="width:440px;max-width:90vw;">
       <div class="modal-header">
         <h2 id="tbSettingTitle">교재 설정</h2>
-        <button class="icon-btn" onclick="closeModal('tbSettingModal')">✕</button>
+        <button class="icon-btn" onclick="closeModal('tbSettingModal')" style="width:36px;height:36px;font-size:18px;display:flex;align-items:center;justify-content:center;">✕</button>
       </div>
       <div class="modal-body" id="tbSettingBody" style="padding:16px 20px;"></div>
       <div style="padding:12px 20px;text-align:right;border-top:1px solid var(--border);">
@@ -4044,18 +4045,18 @@ var qrcode = function() {
         html = `
           <div style="margin-bottom:16px;">
             <label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px;">페이지 표시 방식</label>
-            <div style="display:flex;gap:8px;">
-              <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;padding:6px 12px;border:1.5px solid var(--border);border-radius:6px;${cfg.pageMode === 'range' ? 'border-color:var(--primary);background:#f0f3ff;' : ''}">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;padding:10px 16px;border:1.5px solid var(--border);border-radius:8px;white-space:nowrap;${cfg.pageMode === 'range' ? 'border-color:var(--primary);background:#f0f3ff;' : ''}">
                 <input type="radio" name="tbsPageMode" value="range" ${cfg.pageMode === 'range' ? 'checked' : ''} onchange="updatePageModeUI()"> 시작 ~ 끝
               </label>
-              <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;padding:6px 12px;border:1.5px solid var(--border);border-radius:6px;${cfg.pageMode === 'single' ? 'border-color:var(--primary);background:#f0f3ff;' : ''}">
+              <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;padding:10px 16px;border:1.5px solid var(--border);border-radius:8px;white-space:nowrap;${cfg.pageMode === 'single' ? 'border-color:var(--primary);background:#f0f3ff;' : ''}">
                 <input type="radio" name="tbsPageMode" value="single" ${cfg.pageMode === 'single' ? 'checked' : ''} onchange="updatePageModeUI()"> 페이지만
               </label>
             </div>
           </div>
           <div style="margin-bottom:16px;border-top:1px solid var(--border);padding-top:16px;">
-            <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer;">
-              <input type="checkbox" id="tbsHasUnit" ${cfg.hasUnit ? 'checked' : ''} onchange="toggleUnitSetting()"> 단원 사용
+            <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;cursor:pointer;padding:8px 0;">
+              <input type="checkbox" id="tbsHasUnit" ${cfg.hasUnit ? 'checked' : ''} onchange="toggleUnitSetting()" style="width:18px;height:18px;"> 단원 사용
             </label>
             <div id="tbsUnitWrap" style="margin-top:10px;${cfg.hasUnit ? '' : 'display:none;'}">
               <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">단원 개수</label>
