@@ -449,7 +449,22 @@
       font-weight: 600;
       color: var(--primary);
       min-width: 44px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
     }
+
+    .tb-setting-btn {
+      border: none;
+      background: none;
+      font-size: 11px;
+      color: #adb5bd;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+    }
+    .tb-setting-btn:hover { color: var(--primary); }
 
     .qr-row-inputs {
       flex: 1;
@@ -3402,6 +3417,20 @@ var qrcode = function() {
     </div>
   </div>
 
+  <!-- Textbook Setting Modal -->
+  <div class="modal-overlay" id="tbSettingModal">
+    <div class="modal" style="width:400px;">
+      <div class="modal-header">
+        <h2 id="tbSettingTitle">교재 설정</h2>
+        <button class="icon-btn" onclick="closeModal('tbSettingModal')">✕</button>
+      </div>
+      <div class="modal-body" id="tbSettingBody" style="padding:16px 20px;"></div>
+      <div style="padding:12px 20px;text-align:right;border-top:1px solid var(--border);">
+        <button class="btn btn-primary" onclick="saveTbSetting()">저장</button>
+      </div>
+    </div>
+  </div>
+
   <!-- History Modal -->
   <div class="modal-overlay" id="historyModal">
     <div class="modal" style="width:600px;max-height:80vh;display:flex;flex-direction:column;">
@@ -3615,6 +3644,7 @@ var qrcode = function() {
 
     function restoreRecordValues() {
       for (const studentId of selectedStudents) {
+        if (studentId !== activeTabId) continue; // 활성 탭만
         const recs = loadedRecords[studentId];
         if (!recs) continue;
 
@@ -3623,40 +3653,42 @@ var qrcode = function() {
           if (!record || !record.url) continue;
 
           const prefix = `${studentId}-${tb.id}`;
+          const cfg = getTbConfig(tb);
 
           try {
             const url = new URL(record.url);
             const pages = url.searchParams.get('pages') || '';
             const unit = url.searchParams.get('unit') || '';
 
-            if (tb.name === '문법') {
+            // 단원 복원 (독해 or hasUnit)
+            if (tb.name === '독해' || cfg.hasUnit) {
+              if (unit) {
+                const unitNum = unit.replace('단원', '');
+                const btns = document.querySelectorAll(`#unit-grid-${prefix} .grid-btn`);
+                btns.forEach(b => b.classList.toggle('active', b.dataset.value === unitNum));
+              }
+            }
+
+            // 클카 Day 복원
+            if (tb.name === '클카') {
+              if (unit) {
+                const dayNum = unit.replace('day', '');
+                const btns = document.querySelectorAll(`#day-grid-${prefix} .grid-btn`);
+                btns.forEach(b => b.classList.toggle('active', b.dataset.value === dayNum));
+              }
+              const pageEl = document.getElementById(`cpage-${prefix}`);
+              if (pageEl) pageEl.value = pages;
+            } else if (cfg.pageMode === 'range' && tb.name !== '독해') {
               const parts = pages.split('-');
               const startEl = document.getElementById(`start-${prefix}`);
               const endEl = document.getElementById(`end-${prefix}`);
               if (startEl && parts[0]) startEl.value = parts[0];
-              if (endEl && parts[1]) endEl.value = parts[1];
-            } else if (tb.name === '독해') {
-              const unitNum = unit.replace('단원', '');
-              const btns = document.querySelectorAll(`#unit-grid-${prefix} .grid-btn`);
-              btns.forEach(b => {
-                b.classList.toggle('active', b.dataset.value === unitNum);
-              });
-              const pageEl = document.getElementById(`page-${prefix}`);
-              if (pageEl) pageEl.value = pages;
-            } else if (tb.name === '클카') {
-              const dayNum = unit.replace('day', '');
-              const btns = document.querySelectorAll(`#day-grid-${prefix} .grid-btn`);
-              btns.forEach(b => {
-                b.classList.toggle('active', b.dataset.value === dayNum);
-              });
-              const pageEl = document.getElementById(`cpage-${prefix}`);
-              if (pageEl) pageEl.value = pages;
+              if (endEl && parts[1]) endEl.value = parts[1] || parts[0];
             } else {
-              const pageEl = document.getElementById(`custom-${prefix}`);
+              const pageEl = document.getElementById(`page-${prefix}`);
               if (pageEl) pageEl.value = pages;
             }
 
-            // Generate QR for restored values
             generateQR(studentId, tb.id);
           } catch (e) {
             console.error('복원 오류:', e);
@@ -3833,7 +3865,7 @@ var qrcode = function() {
 
     function restorePrevRecords() {
       for (const studentId of selectedStudents) {
-        // 오늘 기록이 있으면 이전 기록 불러올 필요 없음
+        if (studentId !== activeTabId) continue; // 활성 탭만
         if (loadedRecords[studentId]) continue;
 
         const prev = prevRecords[studentId];
@@ -3844,39 +3876,43 @@ var qrcode = function() {
           if (!record || !record.url) continue;
 
           const prefix = `${studentId}-${tb.id}`;
+          const cfg = getTbConfig(tb);
 
           try {
             const url = new URL(record.url);
             const pages = url.searchParams.get('pages') || '';
             const unit = url.searchParams.get('unit') || '';
 
-            if (tb.name === '문법') {
+            // 단원 복원
+            if (tb.name === '독해' || cfg.hasUnit) {
+              if (unit) {
+                const unitNum = unit.replace('단원', '');
+                const btns = document.querySelectorAll(`#unit-grid-${prefix} .grid-btn`);
+                btns.forEach(b => b.classList.toggle('active', b.dataset.value === unitNum));
+              }
+            }
+
+            // 클카 Day 복원
+            if (tb.name === '클카') {
+              if (unit) {
+                const dayNum = unit.replace('day', '');
+                const btns = document.querySelectorAll(`#day-grid-${prefix} .grid-btn`);
+                btns.forEach(b => b.classList.toggle('active', b.dataset.value === dayNum));
+              }
+              const pageEl = document.getElementById(`cpage-${prefix}`);
+              if (pageEl) pageEl.value = pages;
+            } else if (cfg.pageMode === 'range' && tb.name !== '독해') {
               const parts = pages.split('-');
               const startEl = document.getElementById(`start-${prefix}`);
               const endEl = document.getElementById(`end-${prefix}`);
               if (startEl && parts[0]) startEl.value = parts[0];
-              if (endEl && parts[1]) endEl.value = parts[1];
-            } else if (tb.name === '독해') {
-              const unitNum = unit.replace('단원', '');
-              const btns = document.querySelectorAll(`#unit-grid-${prefix} .grid-btn`);
-              btns.forEach(b => b.classList.toggle('active', b.dataset.value === unitNum));
-              const pageEl = document.getElementById(`page-${prefix}`);
-              if (pageEl) pageEl.value = pages;
-            } else if (tb.name === '클카') {
-              const dayNum = unit.replace('day', '');
-              const btns = document.querySelectorAll(`#day-grid-${prefix} .grid-btn`);
-              btns.forEach(b => b.classList.toggle('active', b.dataset.value === dayNum));
-              const pageEl = document.getElementById(`cpage-${prefix}`);
-              if (pageEl) pageEl.value = pages;
+              if (endEl && parts[1]) endEl.value = parts[1] || parts[0];
             } else {
-              const pageEl = document.getElementById(`custom-${prefix}`);
+              const pageEl = document.getElementById(`page-${prefix}`);
               if (pageEl) pageEl.value = pages;
             }
 
-            // QR 생성
             generateQR(studentId, tb.id);
-
-            // 이전 기록 뱃지 표시
             markAsPrevRecord(studentId, tb.id, prev.date);
           } catch (e) {
             console.error('이전 기록 복원 오류:', e);
@@ -3963,6 +3999,143 @@ var qrcode = function() {
       }
     };
 
+    // ==================== TEXTBOOK SETTINGS (PER-TEXTBOOK) ====================
+
+    let editingTbId = null;
+
+    window.openTbSetting = function(tbId) {
+      const tb = textbooks.find(t => t.id === tbId);
+      if (!tb) return;
+      editingTbId = tbId;
+      const cfg = getTbConfig(tb);
+
+      const title = document.getElementById('tbSettingTitle');
+      title.textContent = `${tb.name} 설정`;
+
+      const body = document.getElementById('tbSettingBody');
+      let html = '';
+
+      if (tb.name === '독해') {
+        // 독해: 단원 개수만
+        html = `
+          <div style="margin-bottom:16px;">
+            <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">단원 개수</label>
+            <div class="num-input-wrap">
+              <button onclick="adjustSettingNum('tbsUnitCount',-1)">−</button>
+              <input type="number" id="tbsUnitCount" min="1" max="30" value="${cfg.unitCount}">
+              <button onclick="adjustSettingNum('tbsUnitCount',1)">+</button>
+            </div>
+          </div>
+        `;
+      } else if (tb.name === '클카') {
+        // 클카: Day 개수만
+        html = `
+          <div style="margin-bottom:16px;">
+            <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Day 개수</label>
+            <div class="num-input-wrap">
+              <button onclick="adjustSettingNum('tbsDayCount',-1)">−</button>
+              <input type="number" id="tbsDayCount" min="1" max="60" value="${cfg.dayCount}">
+              <button onclick="adjustSettingNum('tbsDayCount',1)">+</button>
+            </div>
+          </div>
+        `;
+      } else {
+        // 문법, 교과서, 내신대비, 커스텀: 페이지모드 + 단원 옵션
+        html = `
+          <div style="margin-bottom:16px;">
+            <label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px;">페이지 표시 방식</label>
+            <div style="display:flex;gap:8px;">
+              <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;padding:6px 12px;border:1.5px solid var(--border);border-radius:6px;${cfg.pageMode === 'range' ? 'border-color:var(--primary);background:#f0f3ff;' : ''}">
+                <input type="radio" name="tbsPageMode" value="range" ${cfg.pageMode === 'range' ? 'checked' : ''} onchange="updatePageModeUI()"> 시작 ~ 끝
+              </label>
+              <label style="display:flex;align-items:center;gap:4px;font-size:13px;cursor:pointer;padding:6px 12px;border:1.5px solid var(--border);border-radius:6px;${cfg.pageMode === 'single' ? 'border-color:var(--primary);background:#f0f3ff;' : ''}">
+                <input type="radio" name="tbsPageMode" value="single" ${cfg.pageMode === 'single' ? 'checked' : ''} onchange="updatePageModeUI()"> 페이지만
+              </label>
+            </div>
+          </div>
+          <div style="margin-bottom:16px;border-top:1px solid var(--border);padding-top:16px;">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer;">
+              <input type="checkbox" id="tbsHasUnit" ${cfg.hasUnit ? 'checked' : ''} onchange="toggleUnitSetting()"> 단원 사용
+            </label>
+            <div id="tbsUnitWrap" style="margin-top:10px;${cfg.hasUnit ? '' : 'display:none;'}">
+              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">단원 개수</label>
+              <div class="num-input-wrap">
+                <button onclick="adjustSettingNum('tbsUnitCount',-1)">−</button>
+                <input type="number" id="tbsUnitCount" min="1" max="30" value="${cfg.unitCount}">
+                <button onclick="adjustSettingNum('tbsUnitCount',1)">+</button>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      body.innerHTML = html;
+      openModal('tbSettingModal');
+    };
+
+    window.updatePageModeUI = function() {
+      document.querySelectorAll('[name="tbsPageMode"]').forEach(r => {
+        const label = r.closest('label');
+        if (r.checked) {
+          label.style.borderColor = 'var(--primary)';
+          label.style.background = '#f0f3ff';
+        } else {
+          label.style.borderColor = '';
+          label.style.background = '';
+        }
+      });
+    };
+
+    window.toggleUnitSetting = function() {
+      const checked = document.getElementById('tbsHasUnit').checked;
+      document.getElementById('tbsUnitWrap').style.display = checked ? '' : 'none';
+    };
+
+    window.adjustSettingNum = function(inputId, delta) {
+      const el = document.getElementById(inputId);
+      if (!el) return;
+      let val = parseInt(el.value) || 1;
+      const min = parseInt(el.min) || 1;
+      const max = parseInt(el.max) || 60;
+      val = Math.max(min, Math.min(max, val + delta));
+      el.value = val;
+    };
+
+    window.saveTbSetting = async function() {
+      if (!editingTbId) return;
+      const tb = textbooks.find(t => t.id === editingTbId);
+      if (!tb) return;
+
+      const updates = {};
+
+      if (tb.name === '독해') {
+        updates.unitCount = parseInt(document.getElementById('tbsUnitCount')?.value) || 10;
+      } else if (tb.name === '클카') {
+        updates.dayCount = parseInt(document.getElementById('tbsDayCount')?.value) || 30;
+      } else {
+        const modeEl = document.querySelector('[name="tbsPageMode"]:checked');
+        updates.pageMode = modeEl ? modeEl.value : 'range';
+        const hasUnitEl = document.getElementById('tbsHasUnit');
+        updates.hasUnit = hasUnitEl ? hasUnitEl.checked : false;
+        if (updates.hasUnit) {
+          updates.unitCount = parseInt(document.getElementById('tbsUnitCount')?.value) || 10;
+        } else {
+          updates.hasUnit = false;
+          updates.unitCount = 10;
+        }
+      }
+
+      try {
+        await updateDoc(doc(db, TEXTBOOKS_COL, editingTbId), updates);
+        closeModal('tbSettingModal');
+        showToast(`${tb.name} 설정 저장 완료 ✓`);
+        // renderWorkArea는 onSnapshot에서 자동 호출됨
+      } catch (e) {
+        showToast('설정 저장 실패');
+        console.error(e);
+      }
+    };
+
     window.deleteTextbook = async function(id, name) {
       if (!confirm(`"${name}" 교재를 삭제하시겠습니까?`)) return;
       try {
@@ -3980,9 +4153,16 @@ var qrcode = function() {
 
     function renderTextbookSettings() {
       const container = document.getElementById('textbookList');
-      container.innerHTML = textbooks.map(tb => `
+      const sorted = [...textbooks].sort((a,b) => a.order - b.order);
+      container.innerHTML = sorted.map((tb, idx) => `
         <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid var(--border);border-radius:6px;margin-bottom:6px;">
-          <span style="font-size:14px;">${escapeHtml(tb.name)}</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <button class="icon-btn" style="width:22px;height:22px;font-size:10px;${idx === 0 ? 'opacity:0.3;pointer-events:none;' : ''}" onclick="moveTextbook('${tb.id}',${tb.order},-1)" title="위로">▲</button>
+              <button class="icon-btn" style="width:22px;height:22px;font-size:10px;${idx === sorted.length-1 ? 'opacity:0.3;pointer-events:none;' : ''}" onclick="moveTextbook('${tb.id}',${tb.order},1)" title="아래로">▼</button>
+            </div>
+            <span style="font-size:14px;">${escapeHtml(tb.name)}</span>
+          </div>
           <button class="icon-btn danger" onclick="deleteTextbook('${tb.id}','${escapeHtml(tb.name)}')">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="3 6 5 6 21 6"/>
@@ -3992,6 +4172,22 @@ var qrcode = function() {
         </div>
       `).join('');
     }
+
+    window.moveTextbook = async function(tbId, currentOrder, direction) {
+      const sorted = [...textbooks].sort((a,b) => a.order - b.order);
+      const idx = sorted.findIndex(t => t.id === tbId);
+      const swapIdx = idx + direction;
+      if (swapIdx < 0 || swapIdx >= sorted.length) return;
+
+      const swapTb = sorted[swapIdx];
+      try {
+        await updateDoc(doc(db, TEXTBOOKS_COL, tbId), { order: swapTb.order });
+        await updateDoc(doc(db, TEXTBOOKS_COL, swapTb.id), { order: currentOrder });
+        showToast('순서 변경 완료');
+      } catch (e) {
+        showToast('순서 변경 실패');
+      }
+    };
 
     // ==================== WORK AREA ====================
 
@@ -4077,7 +4273,10 @@ var qrcode = function() {
           </div>
           ${textbooks.sort((a,b) => a.order - b.order).map(tb => `
             <div class="qr-row">
-              <div class="qr-row-label">${escapeHtml(tb.name)}</div>
+              <div class="qr-row-label">
+                ${escapeHtml(tb.name)}
+                <button class="tb-setting-btn" onclick="openTbSetting('${tb.id}')" title="설정">⚙</button>
+              </div>
               <div class="qr-row-inputs">
                 ${getInputsForTextbook(tb, activeStudent.id)}
               </div>
@@ -4114,25 +4313,32 @@ var qrcode = function() {
 
       for (const tb of textbooks) {
         const prefix = `${studentId}-${tb.id}`;
+        const cfg = getTbConfig(tb);
         const state = {};
 
-        if (tb.name === '문법') {
+        // 단원 (독해, 또는 hasUnit)
+        if (tb.name === '독해' || cfg.hasUnit) {
+          const activeBtn = document.querySelector(`#unit-grid-${prefix} .grid-btn.active`);
+          state.unit = activeBtn ? activeBtn.dataset.value : '';
+        }
+
+        // 클카 Day
+        if (tb.name === '클카') {
+          const activeBtn = document.querySelector(`#day-grid-${prefix} .grid-btn.active`);
+          state.day = activeBtn ? activeBtn.dataset.value : '';
+        }
+
+        // 페이지
+        if (tb.name === '클카') {
+          const p = document.getElementById(`cpage-${prefix}`);
+          if (p) state.page = p.value;
+        } else if (cfg.pageMode === 'range' && tb.name !== '독해') {
           const s = document.getElementById(`start-${prefix}`);
           const e = document.getElementById(`end-${prefix}`);
           if (s) state.start = s.value;
           if (e) state.end = e.value;
-        } else if (tb.name === '독해') {
-          const activeBtn = document.querySelector(`#unit-grid-${prefix} .grid-btn.active`);
-          state.unit = activeBtn ? activeBtn.dataset.value : '';
-          const p = document.getElementById(`page-${prefix}`);
-          if (p) state.page = p.value;
-        } else if (tb.name === '클카') {
-          const activeBtn = document.querySelector(`#day-grid-${prefix} .grid-btn.active`);
-          state.day = activeBtn ? activeBtn.dataset.value : '';
-          const p = document.getElementById(`cpage-${prefix}`);
-          if (p) state.page = p.value;
         } else {
-          const p = document.getElementById(`custom-${prefix}`);
+          const p = document.getElementById(`page-${prefix}`);
           if (p) state.page = p.value;
         }
 
@@ -4147,28 +4353,31 @@ var qrcode = function() {
         const prefix = `${studentId}-${tb.id}`;
         const state = tabStates[studentId][tb.id];
         if (!state) continue;
+        const cfg = getTbConfig(tb);
 
-        if (tb.name === '문법') {
+        // 단원 복원
+        if ((tb.name === '독해' || cfg.hasUnit) && state.unit) {
+          const btns = document.querySelectorAll(`#unit-grid-${prefix} .grid-btn`);
+          btns.forEach(b => b.classList.toggle('active', b.dataset.value === state.unit));
+        }
+
+        // 클카 Day 복원
+        if (tb.name === '클카' && state.day) {
+          const btns = document.querySelectorAll(`#day-grid-${prefix} .grid-btn`);
+          btns.forEach(b => b.classList.toggle('active', b.dataset.value === state.day));
+        }
+
+        // 페이지 복원
+        if (tb.name === '클카') {
+          const p = document.getElementById(`cpage-${prefix}`);
+          if (p && state.page) p.value = state.page;
+        } else if (cfg.pageMode === 'range' && tb.name !== '독해') {
           const s = document.getElementById(`start-${prefix}`);
           const e = document.getElementById(`end-${prefix}`);
           if (s && state.start) s.value = state.start;
           if (e && state.end) e.value = state.end;
-        } else if (tb.name === '독해') {
-          if (state.unit) {
-            const btns = document.querySelectorAll(`#unit-grid-${prefix} .grid-btn`);
-            btns.forEach(b => b.classList.toggle('active', b.dataset.value === state.unit));
-          }
-          const p = document.getElementById(`page-${prefix}`);
-          if (p && state.page) p.value = state.page;
-        } else if (tb.name === '클카') {
-          if (state.day) {
-            const btns = document.querySelectorAll(`#day-grid-${prefix} .grid-btn`);
-            btns.forEach(b => b.classList.toggle('active', b.dataset.value === state.day));
-          }
-          const p = document.getElementById(`cpage-${prefix}`);
-          if (p && state.page) p.value = state.page;
         } else {
-          const p = document.getElementById(`custom-${prefix}`);
+          const p = document.getElementById(`page-${prefix}`);
           if (p && state.page) p.value = state.page;
         }
 
@@ -4185,37 +4394,26 @@ var qrcode = function() {
       }
     }
 
+    // 교재 설정 헬퍼
+    function getTbConfig(tb) {
+      return {
+        pageMode: tb.pageMode || 'range',     // 'range' or 'single'
+        unitCount: tb.unitCount || 10,
+        dayCount: tb.dayCount || 30,
+        hasUnit: tb.hasUnit || false,
+      };
+    }
+
     function getInputsForTextbook(tb, studentId) {
       const prefix = `${studentId}-${tb.id}`;
-
-      if (tb.name === '문법') {
-        return `
-          <div class="input-group">
-            <label>시작</label>
-            <div class="num-input-wrap">
-              <button onclick="adjustNum('start-${prefix}',-1)">−</button>
-              <input type="number" id="start-${prefix}" min="1" max="300" value="1" onchange="onInputChange('${studentId}','${tb.id}')">
-              <button onclick="adjustNum('start-${prefix}',1)">+</button>
-            </div>
-          </div>
-          <span style="color:var(--text-light);">~</span>
-          <div class="input-group">
-            <label>끝</label>
-            <div class="num-input-wrap">
-              <button onclick="adjustNum('end-${prefix}',-1)">−</button>
-              <input type="number" id="end-${prefix}" min="1" max="300" value="1" onchange="onInputChange('${studentId}','${tb.id}')">
-              <button onclick="adjustNum('end-${prefix}',1)">+</button>
-            </div>
-          </div>
-        `;
-      }
+      const cfg = getTbConfig(tb);
 
       if (tb.name === '독해') {
         return `
           <div class="input-group">
             <label>단원</label>
             <div class="btn-grid" id="unit-grid-${prefix}">
-              ${Array.from({length:10}, (_,i) => `
+              ${Array.from({length: cfg.unitCount}, (_,i) => `
                 <button class="grid-btn" onclick="selectUnit(this,'${prefix}')" data-value="${i+1}">${i+1}단원</button>
               `).join('')}
             </div>
@@ -4236,7 +4434,7 @@ var qrcode = function() {
           <div class="input-group" style="flex-direction:column;align-items:flex-start;gap:6px;">
             <label>Day 선택</label>
             <div class="btn-grid" id="day-grid-${prefix}">
-              ${Array.from({length:30}, (_,i) => `
+              ${Array.from({length: cfg.dayCount}, (_,i) => `
                 <button class="grid-btn" onclick="selectDay(this,'${prefix}')" data-value="${i+1}" style="min-width:48px;">Day${i+1}</button>
               `).join('')}
             </div>
@@ -4252,24 +4450,99 @@ var qrcode = function() {
         `;
       }
 
-      // Custom textbook - simple page input
-      return `
-        <div class="input-group">
-          <label>p.</label>
-          <div class="num-input-wrap">
-            <button onclick="adjustNum('custom-${prefix}',-1)">−</button>
-            <input type="number" id="custom-${prefix}" min="1" max="300" value="1" onchange="onInputChange('${studentId}','${tb.id}')">
-            <button onclick="adjustNum('custom-${prefix}',1)">+</button>
+      // 문법, 교과서, 내신대비, 기타 커스텀
+      let html = '';
+
+      // 단원 필드 (hasUnit이 true인 경우)
+      if (cfg.hasUnit) {
+        html += `
+          <div class="input-group">
+            <label>단원</label>
+            <div class="btn-grid" id="unit-grid-${prefix}">
+              ${Array.from({length: cfg.unitCount}, (_,i) => `
+                <button class="grid-btn" onclick="selectUnit(this,'${prefix}')" data-value="${i+1}">${i+1}단원</button>
+              `).join('')}
+            </div>
           </div>
-        </div>
-      `;
+        `;
+      }
+
+      // 페이지
+      if (cfg.pageMode === 'range') {
+        html += `
+          <div class="input-group">
+            <label>시작</label>
+            <div class="num-input-wrap">
+              <button onclick="adjustNum('start-${prefix}',-1)">−</button>
+              <input type="number" id="start-${prefix}" min="1" max="300" value="1" onchange="onInputChange('${studentId}','${tb.id}')">
+              <button onclick="adjustNum('start-${prefix}',1)">+</button>
+            </div>
+          </div>
+          <span style="color:var(--text-light);">~</span>
+          <div class="input-group">
+            <label>끝</label>
+            <div class="num-input-wrap">
+              <button onclick="adjustNum('end-${prefix}',-1)">−</button>
+              <input type="number" id="end-${prefix}" min="1" max="300" value="1" onchange="onInputChange('${studentId}','${tb.id}')">
+              <button onclick="adjustNum('end-${prefix}',1)">+</button>
+            </div>
+          </div>
+        `;
+      } else {
+        html += `
+          <div class="input-group">
+            <label>p.</label>
+            <div class="num-input-wrap">
+              <button onclick="adjustNum('page-${prefix}',-1)">−</button>
+              <input type="number" id="page-${prefix}" min="1" max="300" value="1" onchange="onInputChange('${studentId}','${tb.id}')">
+              <button onclick="adjustNum('page-${prefix}',1)">+</button>
+            </div>
+          </div>
+        `;
+      }
+
+      return html;
     }
 
     function getBatchInputs(tb) {
-      const prefix = `batch-${tb.id}`;
+      const cfg = getTbConfig(tb);
 
-      if (tb.name === '문법') {
+      if (tb.name === '클카') {
         return `
+          <div class="input-group">
+            <label>Day</label>
+            <select id="bday-${tb.id}" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px;">
+              ${Array.from({length: cfg.dayCount}, (_,i) => `<option value="${i+1}">Day${i+1}</option>`).join('')}
+            </select>
+          </div>
+          <div class="input-group">
+            <label>p.</label>
+            <div class="num-input-wrap">
+              <button onclick="adjustBatchNum('bcpage-${tb.id}',-1)">−</button>
+              <input type="number" id="bcpage-${tb.id}" min="1" max="300" value="1">
+              <button onclick="adjustBatchNum('bcpage-${tb.id}',1)">+</button>
+            </div>
+          </div>
+        `;
+      }
+
+      let html = '';
+
+      // 단원 (독해 or hasUnit)
+      if (tb.name === '독해' || cfg.hasUnit) {
+        html += `
+          <div class="input-group">
+            <label>단원</label>
+            <select id="bunit-${tb.id}" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px;">
+              ${Array.from({length: cfg.unitCount}, (_,i) => `<option value="${i+1}">${i+1}단원</option>`).join('')}
+            </select>
+          </div>
+        `;
+      }
+
+      // 페이지
+      if (cfg.pageMode === 'range' && tb.name !== '독해') {
+        html += `
           <div class="input-group">
             <label>시작</label>
             <div class="num-input-wrap">
@@ -4288,16 +4561,8 @@ var qrcode = function() {
             </div>
           </div>
         `;
-      }
-
-      if (tb.name === '독해') {
-        return `
-          <div class="input-group">
-            <label>단원</label>
-            <select id="bunit-${tb.id}" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px;">
-              ${Array.from({length:10}, (_,i) => `<option value="${i+1}">${i+1}단원</option>`).join('')}
-            </select>
-          </div>
+      } else {
+        html += `
           <div class="input-group">
             <label>p.</label>
             <div class="num-input-wrap">
@@ -4309,35 +4574,7 @@ var qrcode = function() {
         `;
       }
 
-      if (tb.name === '클카') {
-        return `
-          <div class="input-group">
-            <label>Day</label>
-            <select id="bday-${tb.id}" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px;">
-              ${Array.from({length:30}, (_,i) => `<option value="${i+1}">Day${i+1}</option>`).join('')}
-            </select>
-          </div>
-          <div class="input-group">
-            <label>p.</label>
-            <div class="num-input-wrap">
-              <button onclick="adjustBatchNum('bcpage-${tb.id}',-1)">−</button>
-              <input type="number" id="bcpage-${tb.id}" min="1" max="300" value="1">
-              <button onclick="adjustBatchNum('bcpage-${tb.id}',1)">+</button>
-            </div>
-          </div>
-        `;
-      }
-
-      return `
-        <div class="input-group">
-          <label>p.</label>
-          <div class="num-input-wrap">
-            <button onclick="adjustBatchNum('bcustom-${tb.id}',-1)">−</button>
-            <input type="number" id="bcustom-${tb.id}" min="1" max="300" value="1">
-            <button onclick="adjustBatchNum('bcustom-${tb.id}',1)">+</button>
-          </div>
-        </div>
-      `;
+      return html;
     }
 
     window.adjustBatchNum = function(inputId, delta) {
@@ -4361,19 +4598,24 @@ var qrcode = function() {
       const selectedList = students.filter(s => selectedStudents.has(s.id));
       if (selectedList.length === 0) return;
 
+      const tb = textbooks.find(t => t.id === tbId);
+      const cfg = tb ? getTbConfig(tb) : { pageMode: 'range', hasUnit: false };
+
       // 일괄 적용 값 읽기
       let batchValues = {};
-      if (tbName === '문법') {
-        batchValues.start = document.getElementById(`bstart-${tbId}`)?.value || '1';
-        batchValues.end = document.getElementById(`bend-${tbId}`)?.value || '1';
-      } else if (tbName === '독해') {
-        batchValues.unit = document.getElementById(`bunit-${tbId}`)?.value || '';
-        batchValues.page = document.getElementById(`bpage-${tbId}`)?.value || '1';
-      } else if (tbName === '클카') {
+      if (tbName === '클카') {
         batchValues.day = document.getElementById(`bday-${tbId}`)?.value || '';
         batchValues.page = document.getElementById(`bcpage-${tbId}`)?.value || '1';
       } else {
-        batchValues.page = document.getElementById(`bcustom-${tbId}`)?.value || '1';
+        if (tbName === '독해' || cfg.hasUnit) {
+          batchValues.unit = document.getElementById(`bunit-${tbId}`)?.value || '';
+        }
+        if (cfg.pageMode === 'range' && tbName !== '독해') {
+          batchValues.start = document.getElementById(`bstart-${tbId}`)?.value || '1';
+          batchValues.end = document.getElementById(`bend-${tbId}`)?.value || '1';
+        } else {
+          batchValues.page = document.getElementById(`bpage-${tbId}`)?.value || '1';
+        }
       }
 
       for (const student of selectedList) {
@@ -4381,28 +4623,28 @@ var qrcode = function() {
 
         if (student.id === activeTabId) {
           // 활성 탭: DOM 직접 수정
-          if (tbName === '문법') {
-            const s = document.getElementById(`start-${prefix}`);
-            const e = document.getElementById(`end-${prefix}`);
-            if (s) s.value = batchValues.start;
-            if (e) e.value = batchValues.end;
-          } else if (tbName === '독해') {
-            if (batchValues.unit) {
-              const btns = document.querySelectorAll(`#unit-grid-${prefix} .grid-btn`);
-              btns.forEach(b => b.classList.toggle('active', b.dataset.value === batchValues.unit));
-            }
-            const p = document.getElementById(`page-${prefix}`);
-            if (p) p.value = batchValues.page;
-          } else if (tbName === '클카') {
-            if (batchValues.day) {
-              const btns = document.querySelectorAll(`#day-grid-${prefix} .grid-btn`);
-              btns.forEach(b => b.classList.toggle('active', b.dataset.value === batchValues.day));
-            }
+          // 단원
+          if ((tbName === '독해' || cfg.hasUnit) && batchValues.unit) {
+            const btns = document.querySelectorAll(`#unit-grid-${prefix} .grid-btn`);
+            btns.forEach(b => b.classList.toggle('active', b.dataset.value === batchValues.unit));
+          }
+          // 클카 Day
+          if (tbName === '클카' && batchValues.day) {
+            const btns = document.querySelectorAll(`#day-grid-${prefix} .grid-btn`);
+            btns.forEach(b => b.classList.toggle('active', b.dataset.value === batchValues.day));
+          }
+          // 페이지
+          if (tbName === '클카') {
             const p = document.getElementById(`cpage-${prefix}`);
             if (p) p.value = batchValues.page;
+          } else if (cfg.pageMode === 'range' && tbName !== '독해') {
+            const s = document.getElementById(`start-${prefix}`);
+            const e = document.getElementById(`end-${prefix}`);
+            if (s) s.value = batchValues.start || '1';
+            if (e) e.value = batchValues.end || '1';
           } else {
-            const p = document.getElementById(`custom-${prefix}`);
-            if (p) p.value = batchValues.page;
+            const p = document.getElementById(`page-${prefix}`);
+            if (p) p.value = batchValues.page || '1';
           }
           generateQR(student.id, tbId);
           clearPrevMark(student.id, tbId);
@@ -4477,30 +4719,9 @@ var qrcode = function() {
       const prefix = `${studentId}-${tbId}`;
       const studentName = student.name;
       const enc = encodeURIComponent;
+      const cfg = getTbConfig(tb);
 
-      // gosuapp://homework 형식 사용
-      // 파서에서: textbook = subject 파라미터, chapter = unit에서 추출
-      // 표시: "문법 3단원 p.5 (1회차)" 또는 "문법 p.1-5 (1회차)"
-
-      if (tb.name === '문법') {
-        const startEl = document.getElementById(`start-${prefix}`);
-        const endEl = document.getElementById(`end-${prefix}`);
-        const startPage = startEl ? startEl.value : '1';
-        const endPage = endEl ? endEl.value : '1';
-        const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&pages=${startPage}-${endPage}&studentName=${enc(studentName)}&session=1`;
-        return { url, display: `문법 p.${startPage}~${endPage}` };
-      }
-
-      if (tb.name === '독해') {
-        const activeUnit = document.querySelector(`#unit-grid-${prefix} .grid-btn.active`);
-        const unit = activeUnit ? activeUnit.dataset.value : '';
-        const pageEl = document.getElementById(`page-${prefix}`);
-        const page = pageEl ? pageEl.value : '1';
-        if (!unit) return null;
-        const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&unit=${enc(unit + '단원')}&pages=${page}&studentName=${enc(studentName)}&session=1`;
-        return { url, display: `독해 ${unit}단원 p.${page}` };
-      }
-
+      // 클카: Day + page
       if (tb.name === '클카') {
         const activeDay = document.querySelector(`#day-grid-${prefix} .grid-btn.active`);
         const day = activeDay ? activeDay.dataset.value : '';
@@ -4511,8 +4732,45 @@ var qrcode = function() {
         return { url, display: `클카 Day${day} p.${page}` };
       }
 
-      // Custom
-      const pageEl = document.getElementById(`custom-${prefix}`);
+      // 독해 or hasUnit인 교재: unit + page
+      if (tb.name === '독해' || cfg.hasUnit) {
+        const activeUnit = document.querySelector(`#unit-grid-${prefix} .grid-btn.active`);
+        const unit = activeUnit ? activeUnit.dataset.value : '';
+
+        if (cfg.pageMode === 'range' && tb.name !== '독해') {
+          // hasUnit + range
+          const startEl = document.getElementById(`start-${prefix}`);
+          const endEl = document.getElementById(`end-${prefix}`);
+          const startPage = startEl ? startEl.value : '1';
+          const endPage = endEl ? endEl.value : '1';
+          const unitPart = unit ? `&unit=${enc(unit + '단원')}` : '';
+          const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}${unitPart}&pages=${startPage}-${endPage}&studentName=${enc(studentName)}&session=1`;
+          const unitDisp = unit ? ` ${unit}단원` : '';
+          return { url, display: `${tb.name}${unitDisp} p.${startPage}~${endPage}` };
+        } else {
+          // unit + single page (독해 기본, 또는 single mode)
+          const pageEl = document.getElementById(`page-${prefix}`);
+          const page = pageEl ? pageEl.value : '1';
+          if (tb.name === '독해' && !unit) return null;
+          const unitPart = unit ? `&unit=${enc(unit + '단원')}` : '';
+          const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}${unitPart}&pages=${page}&studentName=${enc(studentName)}&session=1`;
+          const unitDisp = unit ? ` ${unit}단원` : '';
+          return { url, display: `${tb.name}${unitDisp} p.${page}` };
+        }
+      }
+
+      // range 모드: 시작~끝
+      if (cfg.pageMode === 'range') {
+        const startEl = document.getElementById(`start-${prefix}`);
+        const endEl = document.getElementById(`end-${prefix}`);
+        const startPage = startEl ? startEl.value : '1';
+        const endPage = endEl ? endEl.value : '1';
+        const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&pages=${startPage}-${endPage}&studentName=${enc(studentName)}&session=1`;
+        return { url, display: `${tb.name} p.${startPage}~${endPage}` };
+      }
+
+      // single 모드: 페이지만
+      const pageEl = document.getElementById(`page-${prefix}`);
       const page = pageEl ? pageEl.value : '1';
       const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&pages=${page}&studentName=${enc(studentName)}&session=1`;
       return { url, display: `${tb.name} p.${page}` };
@@ -4630,9 +4888,9 @@ var qrcode = function() {
             } else if (tb.name === '클카' && s.day && s.page) {
               url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&unit=day${s.day}&pages=${s.page}&studentName=${enc(student.name)}&session=1`;
               display = `클카 Day${s.day} p.${s.page}`;
-            } else if (s.page) {
-              url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&pages=${s.page}&studentName=${enc(student.name)}&session=1`;
-              display = `${tb.name} p.${s.page}`;
+            } else if (s.start && s.end) {
+              url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&pages=${s.start}-${s.end}&studentName=${enc(student.name)}&session=1`;
+              display = `${tb.name} p.${s.start}~${s.end}`;
             }
 
             if (url) {
