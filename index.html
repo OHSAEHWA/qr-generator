@@ -4729,7 +4729,7 @@ var qrcode = function() {
         const pageEl = document.getElementById(`cpage-${prefix}`);
         const page = pageEl ? pageEl.value : '1';
         if (!day) return null;
-        const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&unit=day${day}&pages=${page}&studentName=${enc(studentName)}&session=1`;
+        const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&unit=day${day}&pages=${page}&studentName=${enc(studentName)}`;
         return { url, display: `클카 Day${day} p.${page}` };
       }
 
@@ -4745,7 +4745,7 @@ var qrcode = function() {
           const startPage = startEl ? startEl.value : '1';
           const endPage = endEl ? endEl.value : '1';
           const unitPart = unit ? `&unit=${enc(unit + '단원')}` : '';
-          const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}${unitPart}&pages=${startPage}-${endPage}&studentName=${enc(studentName)}&session=1`;
+          const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}${unitPart}&pages=${startPage}-${endPage}&studentName=${enc(studentName)}`;
           const unitDisp = unit ? ` ${unit}단원` : '';
           return { url, display: `${tb.name}${unitDisp} p.${startPage}~${endPage}` };
         } else {
@@ -4754,7 +4754,7 @@ var qrcode = function() {
           const page = pageEl ? pageEl.value : '1';
           if (tb.name === '독해' && !unit) return null;
           const unitPart = unit ? `&unit=${enc(unit + '단원')}` : '';
-          const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}${unitPart}&pages=${page}&studentName=${enc(studentName)}&session=1`;
+          const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}${unitPart}&pages=${page}&studentName=${enc(studentName)}`;
           const unitDisp = unit ? ` ${unit}단원` : '';
           return { url, display: `${tb.name}${unitDisp} p.${page}` };
         }
@@ -4766,14 +4766,14 @@ var qrcode = function() {
         const endEl = document.getElementById(`end-${prefix}`);
         const startPage = startEl ? startEl.value : '1';
         const endPage = endEl ? endEl.value : '1';
-        const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&pages=${startPage}-${endPage}&studentName=${enc(studentName)}&session=1`;
+        const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&pages=${startPage}-${endPage}&studentName=${enc(studentName)}`;
         return { url, display: `${tb.name} p.${startPage}~${endPage}` };
       }
 
       // single 모드: 페이지만
       const pageEl = document.getElementById(`page-${prefix}`);
       const page = pageEl ? pageEl.value : '1';
-      const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&pages=${page}&studentName=${enc(studentName)}&session=1`;
+      const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&pages=${page}&studentName=${enc(studentName)}`;
       return { url, display: `${tb.name} p.${page}` };
     }
 
@@ -4881,16 +4881,16 @@ var qrcode = function() {
             let display = '';
 
             if (tb.name === '문법' && s.start && s.end) {
-              url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&pages=${s.start}-${s.end}&studentName=${enc(student.name)}&session=1`;
+              url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&pages=${s.start}-${s.end}&studentName=${enc(student.name)}`;
               display = `문법 p.${s.start}~${s.end}`;
             } else if (tb.name === '독해' && s.unit && s.page) {
-              url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&unit=${enc(s.unit + '단원')}&pages=${s.page}&studentName=${enc(student.name)}&session=1`;
+              url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&unit=${enc(s.unit + '단원')}&pages=${s.page}&studentName=${enc(student.name)}`;
               display = `독해 ${s.unit}단원 p.${s.page}`;
             } else if (tb.name === '클카' && s.day && s.page) {
-              url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&unit=day${s.day}&pages=${s.page}&studentName=${enc(student.name)}&session=1`;
+              url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&unit=day${s.day}&pages=${s.page}&studentName=${enc(student.name)}`;
               display = `클카 Day${s.day} p.${s.page}`;
             } else if (s.start && s.end) {
-              url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&pages=${s.start}-${s.end}&studentName=${enc(student.name)}&session=1`;
+              url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&pages=${s.start}-${s.end}&studentName=${enc(student.name)}`;
               display = `${tb.name} p.${s.start}~${s.end}`;
             }
 
