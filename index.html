@@ -4029,7 +4029,8 @@ var qrcode = function() {
           </div>
         `;
       } else if (tb.name === '클카') {
-        // 클카: Day 개수만
+        // 클카: Day 개수 + 페이지 필드 옵션
+        const hasPage = cfg.hasPage !== false; // 기본 true
         html = `
           <div style="margin-bottom:16px;">
             <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Day 개수</label>
@@ -4038,6 +4039,11 @@ var qrcode = function() {
               <input type="number" id="tbsDayCount" min="1" max="60" value="${cfg.dayCount}">
               <button onclick="adjustSettingNum('tbsDayCount',1)">+</button>
             </div>
+          </div>
+          <div style="border-top:1px solid var(--border);padding-top:16px;">
+            <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;cursor:pointer;padding:8px 0;">
+              <input type="checkbox" id="tbsHasPage" ${hasPage ? 'checked' : ''} style="width:18px;height:18px;"> 페이지 필드 사용
+            </label>
           </div>
         `;
       } else {
@@ -4113,6 +4119,8 @@ var qrcode = function() {
         updates.unitCount = parseInt(document.getElementById('tbsUnitCount')?.value) || 10;
       } else if (tb.name === '클카') {
         updates.dayCount = parseInt(document.getElementById('tbsDayCount')?.value) || 30;
+        const hasPageEl = document.getElementById('tbsHasPage');
+        updates.hasPage = hasPageEl ? hasPageEl.checked : true;
       } else {
         const modeEl = document.querySelector('[name="tbsPageMode"]:checked');
         updates.pageMode = modeEl ? modeEl.value : 'range';
@@ -4398,10 +4406,11 @@ var qrcode = function() {
     // 교재 설정 헬퍼
     function getTbConfig(tb) {
       return {
-        pageMode: tb.pageMode || 'range',     // 'range' or 'single'
+        pageMode: tb.pageMode || 'range',
         unitCount: tb.unitCount || 10,
         dayCount: tb.dayCount || 30,
         hasUnit: tb.hasUnit || false,
+        hasPage: tb.hasPage !== false,  // 기본 true
       };
     }
 
@@ -4431,7 +4440,7 @@ var qrcode = function() {
       }
 
       if (tb.name === '클카') {
-        return `
+        let clkaHtml = `
           <div class="input-group" style="flex-direction:column;align-items:flex-start;gap:6px;">
             <label>Day 선택</label>
             <div class="btn-grid" id="day-grid-${prefix}">
@@ -4440,15 +4449,20 @@ var qrcode = function() {
               `).join('')}
             </div>
           </div>
-          <div class="input-group">
-            <label>p.</label>
-            <div class="num-input-wrap">
-              <button onclick="adjustNum('cpage-${prefix}',-1)">−</button>
-              <input type="number" id="cpage-${prefix}" min="1" max="300" value="1" onchange="onInputChange('${studentId}','${tb.id}')">
-              <button onclick="adjustNum('cpage-${prefix}',1)">+</button>
-            </div>
-          </div>
         `;
+        if (cfg.hasPage) {
+          clkaHtml += `
+            <div class="input-group">
+              <label>p.</label>
+              <div class="num-input-wrap">
+                <button onclick="adjustNum('cpage-${prefix}',-1)">−</button>
+                <input type="number" id="cpage-${prefix}" min="1" max="300" value="1" onchange="onInputChange('${studentId}','${tb.id}')">
+                <button onclick="adjustNum('cpage-${prefix}',1)">+</button>
+              </div>
+            </div>
+          `;
+        }
+        return clkaHtml;
       }
 
       // 문법, 교과서, 내신대비, 기타 커스텀
@@ -4509,22 +4523,27 @@ var qrcode = function() {
       const cfg = getTbConfig(tb);
 
       if (tb.name === '클카') {
-        return `
+        let clkaB = `
           <div class="input-group">
             <label>Day</label>
             <select id="bday-${tb.id}" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px;">
               ${Array.from({length: cfg.dayCount}, (_,i) => `<option value="${i+1}">Day${i+1}</option>`).join('')}
             </select>
           </div>
-          <div class="input-group">
-            <label>p.</label>
-            <div class="num-input-wrap">
-              <button onclick="adjustBatchNum('bcpage-${tb.id}',-1)">−</button>
-              <input type="number" id="bcpage-${tb.id}" min="1" max="300" value="1">
-              <button onclick="adjustBatchNum('bcpage-${tb.id}',1)">+</button>
-            </div>
-          </div>
         `;
+        if (cfg.hasPage) {
+          clkaB += `
+            <div class="input-group">
+              <label>p.</label>
+              <div class="num-input-wrap">
+                <button onclick="adjustBatchNum('bcpage-${tb.id}',-1)">−</button>
+                <input type="number" id="bcpage-${tb.id}" min="1" max="300" value="1">
+                <button onclick="adjustBatchNum('bcpage-${tb.id}',1)">+</button>
+              </div>
+            </div>
+          `;
+        }
+        return clkaB;
       }
 
       let html = '';
@@ -4722,15 +4741,20 @@ var qrcode = function() {
       const enc = encodeURIComponent;
       const cfg = getTbConfig(tb);
 
-      // 클카: Day + page
+      // 클카: Day + page (optional)
       if (tb.name === '클카') {
         const activeDay = document.querySelector(`#day-grid-${prefix} .grid-btn.active`);
         const day = activeDay ? activeDay.dataset.value : '';
-        const pageEl = document.getElementById(`cpage-${prefix}`);
-        const page = pageEl ? pageEl.value : '1';
         if (!day) return null;
-        const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&unit=day${day}&pages=${page}&studentName=${enc(studentName)}`;
-        return { url, display: `클카 Day${day} p.${page}` };
+        if (cfg.hasPage) {
+          const pageEl = document.getElementById(`cpage-${prefix}`);
+          const page = pageEl ? pageEl.value : '1';
+          const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&unit=day${day}&pages=${page}&studentName=${enc(studentName)}`;
+          return { url, display: `클카 Day${day} p.${page}` };
+        } else {
+          const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&unit=day${day}&studentName=${enc(studentName)}`;
+          return { url, display: `클카 Day${day}` };
+        }
       }
 
       // 독해 or hasUnit인 교재: unit + page
@@ -5362,3 +5386,4 @@ var qrcode = function() {
 
 </body>
 </html>
+
