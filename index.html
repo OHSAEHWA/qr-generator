@@ -4752,7 +4752,7 @@ var qrcode = function() {
           const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&unit=day${day}&pages=${page}&studentName=${enc(studentName)}`;
           return { url, display: `클카 Day${day} p.${page}` };
         } else {
-          const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&unit=day${day}&studentName=${enc(studentName)}`;
+          const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&unit=day${day}&pages=0&studentName=${enc(studentName)}`;
           return { url, display: `클카 Day${day}` };
         }
       }
