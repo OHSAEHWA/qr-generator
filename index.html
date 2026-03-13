@@ -5170,7 +5170,6 @@ var qrcode = function() {
       } else {
         // 끝 선택
         if (num < startVal) {
-          // 끝이 시작보다 작으면 스왑
           endEl.value = startVal;
           startEl.value = num;
         } else {
@@ -5179,8 +5178,14 @@ var qrcode = function() {
       }
 
       updateNumberDisplay(prefix);
-      generateQR(studentId, tbId);
-      clearPrevMark(studentId, tbId);
+
+      // 시작+끝 모두 선택된 후에만 QR 생성
+      const ns = parseInt(startEl.value) || 0;
+      const ne = parseInt(endEl.value) || 0;
+      if (ns && ne) {
+        generateQR(studentId, tbId);
+        clearPrevMark(studentId, tbId);
+      }
     };
 
     function updateNumberDisplay(prefix) {
