@@ -158,6 +158,75 @@
       padding: 8px;
     }
 
+    .class-group {
+      margin-bottom: 6px;
+    }
+
+    .class-group-header {
+      display: flex;
+      align-items: center;
+      padding: 6px 10px;
+      cursor: pointer;
+      border-radius: 6px;
+      user-select: none;
+      gap: 6px;
+      transition: background 0.15s;
+    }
+
+    .class-group-header:hover { background: #f0f3f6; }
+
+    .class-group-arrow {
+      font-size: 10px;
+      color: var(--text-light);
+      transition: transform 0.2s;
+      width: 14px;
+      text-align: center;
+    }
+
+    .class-group-arrow.open { transform: rotate(90deg); }
+
+    .class-group-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .class-group-desc {
+      font-size: 10px;
+      color: var(--text-light);
+      margin-left: 2px;
+    }
+
+    .class-group-count {
+      font-size: 10px;
+      color: var(--text-light);
+      margin-left: auto;
+    }
+
+    .class-group-edit {
+      border: none;
+      background: none;
+      font-size: 10px;
+      color: #adb5bd;
+      cursor: pointer;
+      padding: 2px 4px;
+    }
+    .class-group-edit:hover { color: var(--primary); }
+
+    .class-group-students { padding-left: 4px; }
+
+    .class-student-check {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      font-size: 13px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .class-student-check:hover { background: #f8f9fa; }
+    .class-student-check input { width: 16px; height: 16px; }
+
     .student-item {
       display: flex;
       align-items: center;
@@ -3324,7 +3393,10 @@ var qrcode = function() {
     <div class="card student-panel">
       <div class="card-header">
         <h2>👨‍🎓 학생 목록</h2>
-        <span class="badge" id="studentCount">0명</span>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <button class="btn btn-sm btn-outline" onclick="openClassManager()" style="font-size:11px;">반 관리</button>
+          <span class="badge" id="studentCount">0명</span>
+        </div>
       </div>
       <div class="student-add-row">
         <input type="text" id="newStudentName" placeholder="학생 이름 입력" maxlength="20"
@@ -3368,9 +3440,12 @@ var qrcode = function() {
       <div class="modal-body">
         <input type="text" id="editInput" maxlength="20" onkeypress="if(event.key==='Enter')confirmEdit()">
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-outline" onclick="closeModal('editModal')">취소</button>
-        <button class="btn btn-primary" onclick="confirmEdit()">확인</button>
+      <div class="modal-footer" style="justify-content:space-between;">
+        <button class="btn btn-sm" style="background:#e74c3c;color:white;" onclick="deleteEditingStudent()">삭제</button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-outline" onclick="closeModal('editModal')">취소</button>
+          <button class="btn btn-primary" onclick="confirmEdit()">확인</button>
+        </div>
       </div>
     </div>
   </div>
@@ -3431,6 +3506,51 @@ var qrcode = function() {
         <div class="qr-slide-dots" id="qrSlideDots"></div>
       </div>
       <div class="qr-popup-hint" style="margin-top:20px;">화면을 탭하면 닫힙니다</div>
+    </div>
+  </div>
+
+  <!-- Class Manager Modal -->
+  <div class="modal-overlay" id="classManagerModal">
+    <div class="modal" style="width:460px;max-width:90vw;max-height:85vh;display:flex;flex-direction:column;">
+      <div class="modal-header">
+        <h2>반 관리</h2>
+        <button class="icon-btn" onclick="closeModal('classManagerModal')" style="width:36px;height:36px;font-size:18px;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px 20px;overflow-y:auto;flex:1;">
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
+          <input type="text" id="newClassName" placeholder="반 이름" maxlength="20" style="flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:13px;">
+          <button class="btn btn-primary btn-sm" onclick="addClass()">추가</button>
+        </div>
+        <div id="classManagerList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Class Edit Modal -->
+  <div class="modal-overlay" id="classEditModal">
+    <div class="modal" style="width:460px;max-width:90vw;max-height:85vh;display:flex;flex-direction:column;">
+      <div class="modal-header">
+        <h2 id="classEditTitle">반 편집</h2>
+        <button class="icon-btn" onclick="closeModal('classEditModal')" style="width:36px;height:36px;font-size:18px;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px 20px;overflow-y:auto;flex:1;">
+        <div style="margin-bottom:12px;">
+          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">반 이름</label>
+          <input type="text" id="classEditName" maxlength="20" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:14px;box-sizing:border-box;">
+        </div>
+        <div style="margin-bottom:16px;">
+          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">설명 (선택)</label>
+          <input type="text" id="classEditDesc" maxlength="50" placeholder="예: 화/목 영어반" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:13px;box-sizing:border-box;">
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:12px;">
+          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:8px;">소속 학생</label>
+          <div id="classEditStudents" style="max-height:240px;overflow-y:auto;"></div>
+        </div>
+      </div>
+      <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;">
+        <button class="btn btn-sm" style="background:#e74c3c;color:white;" onclick="deleteClass()">삭제</button>
+        <button class="btn btn-primary" onclick="saveClassEdit()">저장</button>
+      </div>
     </div>
   </div>
 
@@ -3527,11 +3647,14 @@ var qrcode = function() {
     const STUDENTS_COL = `academies/${ACADEMY_ID}/qrStudents`;
     const TEXTBOOKS_COL = `academies/${ACADEMY_ID}/qrTextbooks`;
     const RECORDS_COL = `academies/${ACADEMY_ID}/qrRecords`;
+    const CLASSES_COL = `academies/${ACADEMY_ID}/qrClasses`;
 
     // State
     let students = [];
     let selectedStudents = new Set();
     let textbooks = [];
+    let classes = [];
+    let collapsedClasses = new Set(); // 접힌 반 ID
     let editingStudentId = null;
 
     // Initialize
@@ -3548,6 +3671,7 @@ var qrcode = function() {
       // Load data
       loadStudents();
       loadTextbooks();
+      loadClasses();
 
       // 지난주 같은 요일 기록 확인 (학생 로드 후 실행)
       setTimeout(() => checkLastWeekRecords(), 2000);
@@ -3727,6 +3851,15 @@ var qrcode = function() {
       });
     }
 
+    function loadClasses() {
+      const col = collection(db, CLASSES_COL);
+      const q = query(col, orderBy('order'));
+      onSnapshot(q, (snapshot) => {
+        classes = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderStudentList();
+      });
+    }
+
     function renderStudentList() {
       const container = document.getElementById('studentList');
       document.getElementById('studentCount').textContent = `${students.length}명`;
@@ -3736,7 +3869,70 @@ var qrcode = function() {
         return;
       }
 
-      container.innerHTML = students.map(s => `
+      // 반별 그룹핑
+      const grouped = {};
+      const unassigned = [];
+
+      for (const s of students) {
+        if (s.classId) {
+          if (!grouped[s.classId]) grouped[s.classId] = [];
+          grouped[s.classId].push(s);
+        } else {
+          unassigned.push(s);
+        }
+      }
+
+      let html = '';
+
+      // 반별 그룹
+      for (const cls of classes) {
+        const members = grouped[cls.id] || [];
+        const isOpen = !collapsedClasses.has(cls.id);
+
+        html += `
+          <div class="class-group">
+            <div class="class-group-header" onclick="toggleClassGroup('${cls.id}')">
+              <span class="class-group-arrow ${isOpen ? 'open' : ''}">▶</span>
+              <span class="class-group-name">${escapeHtml(cls.name)}</span>
+              ${cls.desc ? `<span class="class-group-desc">${escapeHtml(cls.desc)}</span>` : ''}
+              <span class="class-group-count">${members.length}명</span>
+              <button class="class-group-edit" onclick="event.stopPropagation();openClassEdit('${cls.id}')" title="편집">✎</button>
+            </div>
+            ${isOpen ? `<div class="class-group-students">
+              ${members.map(s => renderStudentItem(s)).join('')}
+            </div>` : ''}
+          </div>
+        `;
+      }
+
+      // 미배정
+      if (unassigned.length > 0) {
+        const isOpen = !collapsedClasses.has('__unassigned');
+        html += `
+          <div class="class-group">
+            <div class="class-group-header" onclick="toggleClassGroup('__unassigned')" style="opacity:0.7;">
+              <span class="class-group-arrow ${isOpen ? 'open' : ''}">▶</span>
+              <span class="class-group-name">미배정</span>
+              <span class="class-group-count">${unassigned.length}명</span>
+            </div>
+            ${isOpen ? `<div class="class-group-students">
+              ${unassigned.map(s => renderStudentItem(s)).join('')}
+            </div>` : ''}
+          </div>
+        `;
+      }
+
+      // 반이 없고 미배정만 있을 때
+      if (classes.length === 0) {
+        html = students.map(s => renderStudentItem(s)).join('');
+      }
+
+      container.innerHTML = html;
+      updateSelectInfo();
+    }
+
+    function renderStudentItem(s) {
+      return `
         <div class="student-item ${selectedStudents.has(s.id) ? 'selected' : ''}"
              onclick="toggleStudent('${s.id}')">
           <div class="student-checkbox">
@@ -3750,18 +3946,156 @@ var qrcode = function() {
                 <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
               </svg>
             </button>
-            <button class="icon-btn danger" onclick="deleteStudent('${s.id}','${escapeHtml(s.name)}')" title="삭제">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <polyline points="3 6 5 6 21 6"/>
-                <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-              </svg>
-            </button>
           </div>
         </div>
-      `).join('');
-
-      updateSelectInfo();
+      `;
     }
+
+    window.toggleClassGroup = function(classId) {
+      if (collapsedClasses.has(classId)) {
+        collapsedClasses.delete(classId);
+      } else {
+        collapsedClasses.add(classId);
+      }
+      renderStudentList();
+    };
+
+    // ==================== CLASS MANAGEMENT ====================
+
+    window.openClassManager = function() {
+      renderClassManagerList();
+      openModal('classManagerModal');
+    };
+
+    function renderClassManagerList() {
+      const container = document.getElementById('classManagerList');
+      if (classes.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-light);font-size:13px;">반을 추가해주세요</div>';
+        return;
+      }
+      container.innerHTML = classes.map(cls => {
+        const count = students.filter(s => s.classId === cls.id).length;
+        return `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;" onclick="openClassEdit('${cls.id}')">
+            <div>
+              <div style="font-size:14px;font-weight:600;">${escapeHtml(cls.name)}</div>
+              ${cls.desc ? `<div style="font-size:11px;color:var(--text-light);">${escapeHtml(cls.desc)}</div>` : ''}
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:12px;color:var(--text-light);">${count}명</span>
+              <span style="color:var(--text-light);">›</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    window.addClass = async function() {
+      const input = document.getElementById('newClassName');
+      const name = input.value.trim();
+      if (!name) return showToast('반 이름을 입력해주세요');
+
+      try {
+        await addDoc(collection(db, CLASSES_COL), {
+          name,
+          desc: '',
+          order: classes.length + 1,
+          createdAt: Timestamp.now()
+        });
+        input.value = '';
+        showToast(`${name} 반 추가 완료`);
+        setTimeout(() => renderClassManagerList(), 300);
+      } catch (e) {
+        showToast('추가 실패');
+      }
+    };
+
+    let editingClassId = null;
+
+    window.openClassEdit = function(classId) {
+      const cls = classes.find(c => c.id === classId);
+      if (!cls) return;
+      editingClassId = classId;
+
+      document.getElementById('classEditTitle').textContent = `${cls.name} 편집`;
+      document.getElementById('classEditName').value = cls.name;
+      document.getElementById('classEditDesc').value = cls.desc || '';
+
+      // 학생 체크박스
+      const container = document.getElementById('classEditStudents');
+      container.innerHTML = students.map(s => {
+        const checked = s.classId === classId;
+        return `
+          <label class="class-student-check">
+            <input type="checkbox" value="${s.id}" ${checked ? 'checked' : ''}> ${escapeHtml(s.name)}
+            ${s.classId && s.classId !== classId ? `<span style="font-size:10px;color:var(--text-light);margin-left:auto;">${escapeHtml((classes.find(c => c.id === s.classId) || {}).name || '')}</span>` : ''}
+          </label>
+        `;
+      }).join('');
+
+      openModal('classEditModal');
+    };
+
+    window.saveClassEdit = async function() {
+      if (!editingClassId) return;
+
+      const name = document.getElementById('classEditName').value.trim();
+      if (!name) return showToast('반 이름을 입력해주세요');
+      const desc = document.getElementById('classEditDesc').value.trim();
+
+      // 반 정보 업데이트
+      try {
+        await updateDoc(doc(db, CLASSES_COL, editingClassId), { name, desc });
+      } catch (e) {
+        return showToast('반 정보 저장 실패');
+      }
+
+      // 학생 배정 업데이트
+      const checkboxes = document.querySelectorAll('#classEditStudents input[type=checkbox]');
+      const batch = [];
+      for (const cb of checkboxes) {
+        const studentId = cb.value;
+        const student = students.find(s => s.id === studentId);
+        if (!student) continue;
+
+        if (cb.checked && student.classId !== editingClassId) {
+          // 이 반에 배정
+          batch.push(updateDoc(doc(db, STUDENTS_COL, studentId), { classId: editingClassId }));
+        } else if (!cb.checked && student.classId === editingClassId) {
+          // 이 반에서 해제
+          batch.push(updateDoc(doc(db, STUDENTS_COL, studentId), { classId: '' }));
+        }
+      }
+
+      try {
+        await Promise.all(batch);
+        closeModal('classEditModal');
+        showToast(`${name} 반 저장 완료 ✓`);
+        setTimeout(() => renderClassManagerList(), 300);
+      } catch (e) {
+        showToast('학생 배정 저장 실패');
+      }
+    };
+
+    window.deleteClass = async function() {
+      if (!editingClassId) return;
+      const cls = classes.find(c => c.id === editingClassId);
+      if (!cls) return;
+      if (!confirm(`"${cls.name}" 반을 삭제하시겠습니까?\n소속 학생은 미배정으로 이동됩니다.`)) return;
+
+      try {
+        // 소속 학생의 classId 해제
+        const members = students.filter(s => s.classId === editingClassId);
+        await Promise.all(members.map(s => updateDoc(doc(db, STUDENTS_COL, s.id), { classId: '' })));
+        await deleteDoc(doc(db, CLASSES_COL, editingClassId));
+        closeModal('classEditModal');
+        showToast(`${cls.name} 반 삭제 완료`);
+        editingClassId = null;
+        setTimeout(() => renderClassManagerList(), 300);
+      } catch (e) {
+        showToast('삭제 실패');
+      }
+    };
 
     window.addStudent = async function() {
       const input = document.getElementById('newStudentName');
@@ -3820,6 +4154,23 @@ var qrcode = function() {
         showToast(`${name} 삭제 완료`);
       } catch (e) {
         console.error(e);
+        showToast('삭제 실패');
+      }
+    };
+
+    window.deleteEditingStudent = async function() {
+      if (!editingStudentId) return;
+      const s = students.find(st => st.id === editingStudentId);
+      const name = s ? s.name : '';
+      if (!confirm(`"${name}" 학생을 삭제하시겠습니까?`)) return;
+      try {
+        await deleteDoc(doc(db, STUDENTS_COL, editingStudentId));
+        selectedStudents.delete(editingStudentId);
+        closeModal('editModal');
+        renderWorkArea();
+        showToast(`${name} 삭제 완료`);
+        editingStudentId = null;
+      } catch (e) {
         showToast('삭제 실패');
       }
     };
@@ -4026,13 +4377,13 @@ var qrcode = function() {
           <label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px;">페이지 표시 방식</label>
           <div style="display:flex;gap:10px;flex-wrap:wrap;">
             <label class="tbs-radio ${cfg.pageMode === 'range' ? 'active' : ''}">
-              <input type="radio" name="tbsPageMode" value="range" ${cfg.pageMode === 'range' ? 'checked' : ''} onchange="updatePageModeUI()"> 시작 ~ 끝
+              시작~끝 <input type="radio" name="tbsPageMode" value="range" ${cfg.pageMode === 'range' ? 'checked' : ''} onchange="updatePageModeUI()">
             </label>
             <label class="tbs-radio ${cfg.pageMode === 'single' ? 'active' : ''}">
-              <input type="radio" name="tbsPageMode" value="single" ${cfg.pageMode === 'single' ? 'checked' : ''} onchange="updatePageModeUI()"> 페이지만
+              끝페이지 <input type="radio" name="tbsPageMode" value="single" ${cfg.pageMode === 'single' ? 'checked' : ''} onchange="updatePageModeUI()">
             </label>
             <label class="tbs-radio ${cfg.pageMode === 'none' ? 'active' : ''}">
-              <input type="radio" name="tbsPageMode" value="none" ${cfg.pageMode === 'none' ? 'checked' : ''} onchange="updatePageModeUI()"> 사용안함
+              사용안함 <input type="radio" name="tbsPageMode" value="none" ${cfg.pageMode === 'none' ? 'checked' : ''} onchange="updatePageModeUI()">
             </label>
           </div>
         </div>
