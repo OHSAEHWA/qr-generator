@@ -467,6 +467,22 @@
     }
     .tb-setting-btn:hover { color: var(--primary); background: #e8ebf0; }
 
+    .tbs-radio {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      padding: 10px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      white-space: nowrap;
+    }
+    .tbs-radio.active {
+      border-color: var(--primary);
+      background: #f0f3ff;
+    }
+
     .qr-row-inputs {
       flex: 1;
       display: flex;
@@ -3645,7 +3661,7 @@ var qrcode = function() {
 
     function restoreRecordValues() {
       for (const studentId of selectedStudents) {
-        if (studentId !== activeTabId) continue; // 활성 탭만
+        if (studentId !== activeTabId) continue;
         const recs = loadedRecords[studentId];
         if (!recs) continue;
 
@@ -3661,31 +3677,28 @@ var qrcode = function() {
             const pages = url.searchParams.get('pages') || '';
             const unit = url.searchParams.get('unit') || '';
 
-            // 단원 복원 (독해 or hasUnit)
-            if (tb.name === '독해' || cfg.hasUnit) {
-              if (unit) {
-                const unitNum = unit.replace('단원', '');
-                const btns = document.querySelectorAll(`#unit-grid-${prefix} .grid-btn`);
-                btns.forEach(b => b.classList.toggle('active', b.dataset.value === unitNum));
-              }
+            // 단원 복원
+            if (cfg.hasUnit && unit) {
+              const unitNum = unit.replace('단원', '');
+              const btns = document.querySelectorAll(`#unit-grid-${prefix} .grid-btn`);
+              btns.forEach(b => b.classList.toggle('active', b.dataset.value === unitNum));
             }
 
-            // 클카 Day 복원
-            if (tb.name === '클카') {
-              if (unit) {
-                const dayNum = unit.replace('day', '');
-                const btns = document.querySelectorAll(`#day-grid-${prefix} .grid-btn`);
-                btns.forEach(b => b.classList.toggle('active', b.dataset.value === dayNum));
-              }
-              const pageEl = document.getElementById(`cpage-${prefix}`);
-              if (pageEl) pageEl.value = pages;
-            } else if (cfg.pageMode === 'range' && tb.name !== '독해') {
+            // Day 복원
+            if (cfg.hasDay && unit && unit.startsWith('day')) {
+              const dayNum = unit.replace('day', '');
+              const btns = document.querySelectorAll(`#day-grid-${prefix} .grid-btn`);
+              btns.forEach(b => b.classList.toggle('active', b.dataset.value === dayNum));
+            }
+
+            // 페이지 복원
+            if (cfg.pageMode === 'range') {
               const parts = pages.split('-');
               const startEl = document.getElementById(`start-${prefix}`);
               const endEl = document.getElementById(`end-${prefix}`);
               if (startEl && parts[0]) startEl.value = parts[0];
               if (endEl && parts[1]) endEl.value = parts[1] || parts[0];
-            } else {
+            } else if (cfg.pageMode === 'single' && pages && pages !== '0') {
               const pageEl = document.getElementById(`page-${prefix}`);
               if (pageEl) pageEl.value = pages;
             }
@@ -3866,7 +3879,7 @@ var qrcode = function() {
 
     function restorePrevRecords() {
       for (const studentId of selectedStudents) {
-        if (studentId !== activeTabId) continue; // 활성 탭만
+        if (studentId !== activeTabId) continue;
         if (loadedRecords[studentId]) continue;
 
         const prev = prevRecords[studentId];
@@ -3884,31 +3897,25 @@ var qrcode = function() {
             const pages = url.searchParams.get('pages') || '';
             const unit = url.searchParams.get('unit') || '';
 
-            // 단원 복원
-            if (tb.name === '독해' || cfg.hasUnit) {
-              if (unit) {
-                const unitNum = unit.replace('단원', '');
-                const btns = document.querySelectorAll(`#unit-grid-${prefix} .grid-btn`);
-                btns.forEach(b => b.classList.toggle('active', b.dataset.value === unitNum));
-              }
+            if (cfg.hasUnit && unit) {
+              const unitNum = unit.replace('단원', '');
+              const btns = document.querySelectorAll(`#unit-grid-${prefix} .grid-btn`);
+              btns.forEach(b => b.classList.toggle('active', b.dataset.value === unitNum));
             }
 
-            // 클카 Day 복원
-            if (tb.name === '클카') {
-              if (unit) {
-                const dayNum = unit.replace('day', '');
-                const btns = document.querySelectorAll(`#day-grid-${prefix} .grid-btn`);
-                btns.forEach(b => b.classList.toggle('active', b.dataset.value === dayNum));
-              }
-              const pageEl = document.getElementById(`cpage-${prefix}`);
-              if (pageEl) pageEl.value = pages;
-            } else if (cfg.pageMode === 'range' && tb.name !== '독해') {
+            if (cfg.hasDay && unit && unit.startsWith('day')) {
+              const dayNum = unit.replace('day', '');
+              const btns = document.querySelectorAll(`#day-grid-${prefix} .grid-btn`);
+              btns.forEach(b => b.classList.toggle('active', b.dataset.value === dayNum));
+            }
+
+            if (cfg.pageMode === 'range') {
               const parts = pages.split('-');
               const startEl = document.getElementById(`start-${prefix}`);
               const endEl = document.getElementById(`end-${prefix}`);
               if (startEl && parts[0]) startEl.value = parts[0];
               if (endEl && parts[1]) endEl.value = parts[1] || parts[0];
-            } else {
+            } else if (cfg.pageMode === 'single' && pages && pages !== '0') {
               const pageEl = document.getElementById(`page-${prefix}`);
               if (pageEl) pageEl.value = pages;
             }
@@ -4014,88 +4021,61 @@ var qrcode = function() {
       title.textContent = `${tb.name} 설정`;
 
       const body = document.getElementById('tbSettingBody');
-      let html = '';
-
-      if (tb.name === '독해') {
-        // 독해: 단원 개수만
-        html = `
-          <div style="margin-bottom:16px;">
-            <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">단원 개수</label>
+      body.innerHTML = `
+        <div style="margin-bottom:16px;">
+          <label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px;">페이지 표시 방식</label>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <label class="tbs-radio ${cfg.pageMode === 'range' ? 'active' : ''}">
+              <input type="radio" name="tbsPageMode" value="range" ${cfg.pageMode === 'range' ? 'checked' : ''} onchange="updatePageModeUI()"> 시작 ~ 끝
+            </label>
+            <label class="tbs-radio ${cfg.pageMode === 'single' ? 'active' : ''}">
+              <input type="radio" name="tbsPageMode" value="single" ${cfg.pageMode === 'single' ? 'checked' : ''} onchange="updatePageModeUI()"> 페이지만
+            </label>
+            <label class="tbs-radio ${cfg.pageMode === 'none' ? 'active' : ''}">
+              <input type="radio" name="tbsPageMode" value="none" ${cfg.pageMode === 'none' ? 'checked' : ''} onchange="updatePageModeUI()"> 사용안함
+            </label>
+          </div>
+        </div>
+        <div style="margin-bottom:16px;border-top:1px solid var(--border);padding-top:16px;">
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;cursor:pointer;padding:8px 0;">
+            <input type="checkbox" id="tbsHasUnit" ${cfg.hasUnit ? 'checked' : ''} onchange="toggleSettingSection('tbsUnitWrap','tbsHasUnit')" style="width:18px;height:18px;"> 단원 사용
+          </label>
+          <div id="tbsUnitWrap" style="margin-top:10px;${cfg.hasUnit ? '' : 'display:none;'}">
+            <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">단원 개수</label>
             <div class="num-input-wrap">
               <button onclick="adjustSettingNum('tbsUnitCount',-1)">−</button>
               <input type="number" id="tbsUnitCount" min="1" max="30" value="${cfg.unitCount}">
               <button onclick="adjustSettingNum('tbsUnitCount',1)">+</button>
             </div>
           </div>
-        `;
-      } else if (tb.name === '클카') {
-        // 클카: Day 개수 + 페이지 필드 옵션
-        const hasPage = cfg.hasPage !== false; // 기본 true
-        html = `
-          <div style="margin-bottom:16px;">
-            <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px;">Day 개수</label>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:16px;">
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;cursor:pointer;padding:8px 0;">
+            <input type="checkbox" id="tbsHasDay" ${cfg.hasDay ? 'checked' : ''} onchange="toggleSettingSection('tbsDayWrap','tbsHasDay')" style="width:18px;height:18px;"> Day 사용
+          </label>
+          <div id="tbsDayWrap" style="margin-top:10px;${cfg.hasDay ? '' : 'display:none;'}">
+            <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">Day 개수</label>
             <div class="num-input-wrap">
               <button onclick="adjustSettingNum('tbsDayCount',-1)">−</button>
               <input type="number" id="tbsDayCount" min="1" max="60" value="${cfg.dayCount}">
               <button onclick="adjustSettingNum('tbsDayCount',1)">+</button>
             </div>
           </div>
-          <div style="border-top:1px solid var(--border);padding-top:16px;">
-            <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;cursor:pointer;padding:8px 0;">
-              <input type="checkbox" id="tbsHasPage" ${hasPage ? 'checked' : ''} style="width:18px;height:18px;"> 페이지 필드 사용
-            </label>
-          </div>
-        `;
-      } else {
-        // 문법, 교과서, 내신대비, 커스텀: 페이지모드 + 단원 옵션
-        html = `
-          <div style="margin-bottom:16px;">
-            <label style="font-size:13px;font-weight:600;display:block;margin-bottom:8px;">페이지 표시 방식</label>
-            <div style="display:flex;gap:10px;flex-wrap:wrap;">
-              <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;padding:10px 16px;border:1.5px solid var(--border);border-radius:8px;white-space:nowrap;${cfg.pageMode === 'range' ? 'border-color:var(--primary);background:#f0f3ff;' : ''}">
-                <input type="radio" name="tbsPageMode" value="range" ${cfg.pageMode === 'range' ? 'checked' : ''} onchange="updatePageModeUI()"> 시작 ~ 끝
-              </label>
-              <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;padding:10px 16px;border:1.5px solid var(--border);border-radius:8px;white-space:nowrap;${cfg.pageMode === 'single' ? 'border-color:var(--primary);background:#f0f3ff;' : ''}">
-                <input type="radio" name="tbsPageMode" value="single" ${cfg.pageMode === 'single' ? 'checked' : ''} onchange="updatePageModeUI()"> 페이지만
-              </label>
-            </div>
-          </div>
-          <div style="margin-bottom:16px;border-top:1px solid var(--border);padding-top:16px;">
-            <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;cursor:pointer;padding:8px 0;">
-              <input type="checkbox" id="tbsHasUnit" ${cfg.hasUnit ? 'checked' : ''} onchange="toggleUnitSetting()" style="width:18px;height:18px;"> 단원 사용
-            </label>
-            <div id="tbsUnitWrap" style="margin-top:10px;${cfg.hasUnit ? '' : 'display:none;'}">
-              <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">단원 개수</label>
-              <div class="num-input-wrap">
-                <button onclick="adjustSettingNum('tbsUnitCount',-1)">−</button>
-                <input type="number" id="tbsUnitCount" min="1" max="30" value="${cfg.unitCount}">
-                <button onclick="adjustSettingNum('tbsUnitCount',1)">+</button>
-              </div>
-            </div>
-          </div>
-        `;
-      }
-
-      body.innerHTML = html;
+        </div>
+      `;
       openModal('tbSettingModal');
     };
 
     window.updatePageModeUI = function() {
       document.querySelectorAll('[name="tbsPageMode"]').forEach(r => {
-        const label = r.closest('label');
-        if (r.checked) {
-          label.style.borderColor = 'var(--primary)';
-          label.style.background = '#f0f3ff';
-        } else {
-          label.style.borderColor = '';
-          label.style.background = '';
-        }
+        const label = r.closest('.tbs-radio');
+        if (label) label.classList.toggle('active', r.checked);
       });
     };
 
-    window.toggleUnitSetting = function() {
-      const checked = document.getElementById('tbsHasUnit').checked;
-      document.getElementById('tbsUnitWrap').style.display = checked ? '' : 'none';
+    window.toggleSettingSection = function(wrapId, checkId) {
+      const checked = document.getElementById(checkId).checked;
+      document.getElementById(wrapId).style.display = checked ? '' : 'none';
     };
 
     window.adjustSettingNum = function(inputId, delta) {
@@ -4113,32 +4093,19 @@ var qrcode = function() {
       const tb = textbooks.find(t => t.id === editingTbId);
       if (!tb) return;
 
-      const updates = {};
-
-      if (tb.name === '독해') {
-        updates.unitCount = parseInt(document.getElementById('tbsUnitCount')?.value) || 10;
-      } else if (tb.name === '클카') {
-        updates.dayCount = parseInt(document.getElementById('tbsDayCount')?.value) || 30;
-        const hasPageEl = document.getElementById('tbsHasPage');
-        updates.hasPage = hasPageEl ? hasPageEl.checked : true;
-      } else {
-        const modeEl = document.querySelector('[name="tbsPageMode"]:checked');
-        updates.pageMode = modeEl ? modeEl.value : 'range';
-        const hasUnitEl = document.getElementById('tbsHasUnit');
-        updates.hasUnit = hasUnitEl ? hasUnitEl.checked : false;
-        if (updates.hasUnit) {
-          updates.unitCount = parseInt(document.getElementById('tbsUnitCount')?.value) || 10;
-        } else {
-          updates.hasUnit = false;
-          updates.unitCount = 10;
-        }
-      }
+      const modeEl = document.querySelector('[name="tbsPageMode"]:checked');
+      const updates = {
+        pageMode: modeEl ? modeEl.value : 'range',
+        hasUnit: document.getElementById('tbsHasUnit')?.checked || false,
+        unitCount: parseInt(document.getElementById('tbsUnitCount')?.value) || 10,
+        hasDay: document.getElementById('tbsHasDay')?.checked || false,
+        dayCount: parseInt(document.getElementById('tbsDayCount')?.value) || 30,
+      };
 
       try {
         await updateDoc(doc(db, TEXTBOOKS_COL, editingTbId), updates);
         closeModal('tbSettingModal');
         showToast(`${tb.name} 설정 저장 완료 ✓`);
-        // renderWorkArea는 onSnapshot에서 자동 호출됨
       } catch (e) {
         showToast('설정 저장 실패');
         console.error(e);
@@ -4325,28 +4292,20 @@ var qrcode = function() {
         const cfg = getTbConfig(tb);
         const state = {};
 
-        // 단원 (독해, 또는 hasUnit)
-        if (tb.name === '독해' || cfg.hasUnit) {
+        if (cfg.hasUnit) {
           const activeBtn = document.querySelector(`#unit-grid-${prefix} .grid-btn.active`);
           state.unit = activeBtn ? activeBtn.dataset.value : '';
         }
-
-        // 클카 Day
-        if (tb.name === '클카') {
+        if (cfg.hasDay) {
           const activeBtn = document.querySelector(`#day-grid-${prefix} .grid-btn.active`);
           state.day = activeBtn ? activeBtn.dataset.value : '';
         }
-
-        // 페이지
-        if (tb.name === '클카') {
-          const p = document.getElementById(`cpage-${prefix}`);
-          if (p) state.page = p.value;
-        } else if (cfg.pageMode === 'range' && tb.name !== '독해') {
+        if (cfg.pageMode === 'range') {
           const s = document.getElementById(`start-${prefix}`);
           const e = document.getElementById(`end-${prefix}`);
           if (s) state.start = s.value;
           if (e) state.end = e.value;
-        } else {
+        } else if (cfg.pageMode === 'single') {
           const p = document.getElementById(`page-${prefix}`);
           if (p) state.page = p.value;
         }
@@ -4364,28 +4323,20 @@ var qrcode = function() {
         if (!state) continue;
         const cfg = getTbConfig(tb);
 
-        // 단원 복원
-        if ((tb.name === '독해' || cfg.hasUnit) && state.unit) {
+        if (cfg.hasUnit && state.unit) {
           const btns = document.querySelectorAll(`#unit-grid-${prefix} .grid-btn`);
           btns.forEach(b => b.classList.toggle('active', b.dataset.value === state.unit));
         }
-
-        // 클카 Day 복원
-        if (tb.name === '클카' && state.day) {
+        if (cfg.hasDay && state.day) {
           const btns = document.querySelectorAll(`#day-grid-${prefix} .grid-btn`);
           btns.forEach(b => b.classList.toggle('active', b.dataset.value === state.day));
         }
-
-        // 페이지 복원
-        if (tb.name === '클카') {
-          const p = document.getElementById(`cpage-${prefix}`);
-          if (p && state.page) p.value = state.page;
-        } else if (cfg.pageMode === 'range' && tb.name !== '독해') {
+        if (cfg.pageMode === 'range') {
           const s = document.getElementById(`start-${prefix}`);
           const e = document.getElementById(`end-${prefix}`);
           if (s && state.start) s.value = state.start;
           if (e && state.end) e.value = state.end;
-        } else {
+        } else if (cfg.pageMode === 'single') {
           const p = document.getElementById(`page-${prefix}`);
           if (p && state.page) p.value = state.page;
         }
@@ -4406,69 +4357,20 @@ var qrcode = function() {
     // 교재 설정 헬퍼
     function getTbConfig(tb) {
       return {
-        pageMode: tb.pageMode || 'range',
-        unitCount: tb.unitCount || 10,
-        dayCount: tb.dayCount || 30,
+        pageMode: tb.pageMode || 'range',     // 'range', 'single', 'none'
         hasUnit: tb.hasUnit || false,
-        hasPage: tb.hasPage !== false,  // 기본 true
+        unitCount: tb.unitCount || 10,
+        hasDay: tb.hasDay || false,
+        dayCount: tb.dayCount || 30,
       };
     }
 
     function getInputsForTextbook(tb, studentId) {
       const prefix = `${studentId}-${tb.id}`;
       const cfg = getTbConfig(tb);
-
-      if (tb.name === '독해') {
-        return `
-          <div class="input-group">
-            <label>단원</label>
-            <div class="btn-grid" id="unit-grid-${prefix}">
-              ${Array.from({length: cfg.unitCount}, (_,i) => `
-                <button class="grid-btn" onclick="selectUnit(this,'${prefix}')" data-value="${i+1}">${i+1}단원</button>
-              `).join('')}
-            </div>
-          </div>
-          <div class="input-group" style="margin-left:6px;">
-            <label>p.</label>
-            <div class="num-input-wrap">
-              <button onclick="adjustNum('page-${prefix}',-1)">−</button>
-              <input type="number" id="page-${prefix}" min="1" max="300" value="1" onchange="onInputChange('${studentId}','${tb.id}')">
-              <button onclick="adjustNum('page-${prefix}',1)">+</button>
-            </div>
-          </div>
-        `;
-      }
-
-      if (tb.name === '클카') {
-        let clkaHtml = `
-          <div class="input-group" style="flex-direction:column;align-items:flex-start;gap:6px;">
-            <label>Day 선택</label>
-            <div class="btn-grid" id="day-grid-${prefix}">
-              ${Array.from({length: cfg.dayCount}, (_,i) => `
-                <button class="grid-btn" onclick="selectDay(this,'${prefix}')" data-value="${i+1}" style="min-width:48px;">Day${i+1}</button>
-              `).join('')}
-            </div>
-          </div>
-        `;
-        if (cfg.hasPage) {
-          clkaHtml += `
-            <div class="input-group">
-              <label>p.</label>
-              <div class="num-input-wrap">
-                <button onclick="adjustNum('cpage-${prefix}',-1)">−</button>
-                <input type="number" id="cpage-${prefix}" min="1" max="300" value="1" onchange="onInputChange('${studentId}','${tb.id}')">
-                <button onclick="adjustNum('cpage-${prefix}',1)">+</button>
-              </div>
-            </div>
-          `;
-        }
-        return clkaHtml;
-      }
-
-      // 문법, 교과서, 내신대비, 기타 커스텀
       let html = '';
 
-      // 단원 필드 (hasUnit이 true인 경우)
+      // 단원 필드
       if (cfg.hasUnit) {
         html += `
           <div class="input-group">
@@ -4482,7 +4384,21 @@ var qrcode = function() {
         `;
       }
 
-      // 페이지
+      // Day 필드
+      if (cfg.hasDay) {
+        html += `
+          <div class="input-group" style="flex-direction:column;align-items:flex-start;gap:6px;">
+            <label>Day 선택</label>
+            <div class="btn-grid" id="day-grid-${prefix}">
+              ${Array.from({length: cfg.dayCount}, (_,i) => `
+                <button class="grid-btn" onclick="selectDay(this,'${prefix}')" data-value="${i+1}" style="min-width:48px;">Day${i+1}</button>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      // 페이지 필드
       if (cfg.pageMode === 'range') {
         html += `
           <div class="input-group">
@@ -4503,7 +4419,7 @@ var qrcode = function() {
             </div>
           </div>
         `;
-      } else {
+      } else if (cfg.pageMode === 'single') {
         html += `
           <div class="input-group">
             <label>p.</label>
@@ -4515,41 +4431,17 @@ var qrcode = function() {
           </div>
         `;
       }
+      // pageMode === 'none' → 페이지 필드 없음
 
       return html;
     }
 
     function getBatchInputs(tb) {
       const cfg = getTbConfig(tb);
-
-      if (tb.name === '클카') {
-        let clkaB = `
-          <div class="input-group">
-            <label>Day</label>
-            <select id="bday-${tb.id}" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px;">
-              ${Array.from({length: cfg.dayCount}, (_,i) => `<option value="${i+1}">Day${i+1}</option>`).join('')}
-            </select>
-          </div>
-        `;
-        if (cfg.hasPage) {
-          clkaB += `
-            <div class="input-group">
-              <label>p.</label>
-              <div class="num-input-wrap">
-                <button onclick="adjustBatchNum('bcpage-${tb.id}',-1)">−</button>
-                <input type="number" id="bcpage-${tb.id}" min="1" max="300" value="1">
-                <button onclick="adjustBatchNum('bcpage-${tb.id}',1)">+</button>
-              </div>
-            </div>
-          `;
-        }
-        return clkaB;
-      }
-
       let html = '';
 
-      // 단원 (독해 or hasUnit)
-      if (tb.name === '독해' || cfg.hasUnit) {
+      // 단원
+      if (cfg.hasUnit) {
         html += `
           <div class="input-group">
             <label>단원</label>
@@ -4560,8 +4452,20 @@ var qrcode = function() {
         `;
       }
 
+      // Day
+      if (cfg.hasDay) {
+        html += `
+          <div class="input-group">
+            <label>Day</label>
+            <select id="bday-${tb.id}" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:12px;">
+              ${Array.from({length: cfg.dayCount}, (_,i) => `<option value="${i+1}">Day${i+1}</option>`).join('')}
+            </select>
+          </div>
+        `;
+      }
+
       // 페이지
-      if (cfg.pageMode === 'range' && tb.name !== '독해') {
+      if (cfg.pageMode === 'range') {
         html += `
           <div class="input-group">
             <label>시작</label>
@@ -4581,7 +4485,7 @@ var qrcode = function() {
             </div>
           </div>
         `;
-      } else {
+      } else if (cfg.pageMode === 'single') {
         html += `
           <div class="input-group">
             <label>p.</label>
@@ -4619,57 +4523,43 @@ var qrcode = function() {
       if (selectedList.length === 0) return;
 
       const tb = textbooks.find(t => t.id === tbId);
-      const cfg = tb ? getTbConfig(tb) : { pageMode: 'range', hasUnit: false };
+      const cfg = tb ? getTbConfig(tb) : { pageMode: 'range', hasUnit: false, hasDay: false };
 
       // 일괄 적용 값 읽기
       let batchValues = {};
-      if (tbName === '클카') {
-        batchValues.day = document.getElementById(`bday-${tbId}`)?.value || '';
-        batchValues.page = document.getElementById(`bcpage-${tbId}`)?.value || '1';
-      } else {
-        if (tbName === '독해' || cfg.hasUnit) {
-          batchValues.unit = document.getElementById(`bunit-${tbId}`)?.value || '';
-        }
-        if (cfg.pageMode === 'range' && tbName !== '독해') {
-          batchValues.start = document.getElementById(`bstart-${tbId}`)?.value || '1';
-          batchValues.end = document.getElementById(`bend-${tbId}`)?.value || '1';
-        } else {
-          batchValues.page = document.getElementById(`bpage-${tbId}`)?.value || '1';
-        }
+      if (cfg.hasUnit) batchValues.unit = document.getElementById(`bunit-${tbId}`)?.value || '';
+      if (cfg.hasDay) batchValues.day = document.getElementById(`bday-${tbId}`)?.value || '';
+      if (cfg.pageMode === 'range') {
+        batchValues.start = document.getElementById(`bstart-${tbId}`)?.value || '1';
+        batchValues.end = document.getElementById(`bend-${tbId}`)?.value || '1';
+      } else if (cfg.pageMode === 'single') {
+        batchValues.page = document.getElementById(`bpage-${tbId}`)?.value || '1';
       }
 
       for (const student of selectedList) {
         const prefix = `${student.id}-${tbId}`;
 
         if (student.id === activeTabId) {
-          // 활성 탭: DOM 직접 수정
-          // 단원
-          if ((tbName === '독해' || cfg.hasUnit) && batchValues.unit) {
+          if (cfg.hasUnit && batchValues.unit) {
             const btns = document.querySelectorAll(`#unit-grid-${prefix} .grid-btn`);
             btns.forEach(b => b.classList.toggle('active', b.dataset.value === batchValues.unit));
           }
-          // 클카 Day
-          if (tbName === '클카' && batchValues.day) {
+          if (cfg.hasDay && batchValues.day) {
             const btns = document.querySelectorAll(`#day-grid-${prefix} .grid-btn`);
             btns.forEach(b => b.classList.toggle('active', b.dataset.value === batchValues.day));
           }
-          // 페이지
-          if (tbName === '클카') {
-            const p = document.getElementById(`cpage-${prefix}`);
-            if (p) p.value = batchValues.page;
-          } else if (cfg.pageMode === 'range' && tbName !== '독해') {
+          if (cfg.pageMode === 'range') {
             const s = document.getElementById(`start-${prefix}`);
             const e = document.getElementById(`end-${prefix}`);
             if (s) s.value = batchValues.start || '1';
             if (e) e.value = batchValues.end || '1';
-          } else {
+          } else if (cfg.pageMode === 'single') {
             const p = document.getElementById(`page-${prefix}`);
             if (p) p.value = batchValues.page || '1';
           }
           generateQR(student.id, tbId);
           clearPrevMark(student.id, tbId);
         } else {
-          // 비활성 탭: tabStates에 저장
           if (!tabStates[student.id]) tabStates[student.id] = {};
           tabStates[student.id][tbId] = { ...batchValues };
         }
@@ -4741,64 +4631,56 @@ var qrcode = function() {
       const enc = encodeURIComponent;
       const cfg = getTbConfig(tb);
 
-      // 클카: Day + page (optional)
-      if (tb.name === '클카') {
-        const activeDay = document.querySelector(`#day-grid-${prefix} .grid-btn.active`);
-        const day = activeDay ? activeDay.dataset.value : '';
-        if (!day) return null;
-        if (cfg.hasPage) {
-          const pageEl = document.getElementById(`cpage-${prefix}`);
-          const page = pageEl ? pageEl.value : '1';
-          const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&unit=day${day}&pages=${page}&studentName=${enc(studentName)}`;
-          return { url, display: `클카 Day${day} p.${page}` };
-        } else {
-          const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&unit=day${day}&studentName=${enc(studentName)}`;
-          return { url, display: `클카 Day${day}` };
-        }
-      }
+      // 단원, Day, 페이지 값 수집
+      let unitPart = '';
+      let unitDisp = '';
+      let dayPart = '';
+      let dayDisp = '';
+      let pagesPart = '';
+      let pageDisp = '';
 
-      // 독해 or hasUnit인 교재: unit + page
-      if (tb.name === '독해' || cfg.hasUnit) {
+      // 단원
+      if (cfg.hasUnit) {
         const activeUnit = document.querySelector(`#unit-grid-${prefix} .grid-btn.active`);
         const unit = activeUnit ? activeUnit.dataset.value : '';
-
-        if (cfg.pageMode === 'range' && tb.name !== '독해') {
-          // hasUnit + range
-          const startEl = document.getElementById(`start-${prefix}`);
-          const endEl = document.getElementById(`end-${prefix}`);
-          const startPage = startEl ? startEl.value : '1';
-          const endPage = endEl ? endEl.value : '1';
-          const unitPart = unit ? `&unit=${enc(unit + '단원')}` : '';
-          const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}${unitPart}&pages=${startPage}-${endPage}&studentName=${enc(studentName)}`;
-          const unitDisp = unit ? ` ${unit}단원` : '';
-          return { url, display: `${tb.name}${unitDisp} p.${startPage}~${endPage}` };
-        } else {
-          // unit + single page (독해 기본, 또는 single mode)
-          const pageEl = document.getElementById(`page-${prefix}`);
-          const page = pageEl ? pageEl.value : '1';
-          if (tb.name === '독해' && !unit) return null;
-          const unitPart = unit ? `&unit=${enc(unit + '단원')}` : '';
-          const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}${unitPart}&pages=${page}&studentName=${enc(studentName)}`;
-          const unitDisp = unit ? ` ${unit}단원` : '';
-          return { url, display: `${tb.name}${unitDisp} p.${page}` };
+        if (unit) {
+          unitPart = `&unit=${enc(unit + '단원')}`;
+          unitDisp = ` ${unit}단원`;
         }
       }
 
-      // range 모드: 시작~끝
+      // Day
+      if (cfg.hasDay) {
+        const activeDay = document.querySelector(`#day-grid-${prefix} .grid-btn.active`);
+        const day = activeDay ? activeDay.dataset.value : '';
+        if (day) {
+          dayPart = `&unit=day${day}`;
+          dayDisp = ` Day${day}`;
+        }
+      }
+
+      // 페이지
       if (cfg.pageMode === 'range') {
         const startEl = document.getElementById(`start-${prefix}`);
         const endEl = document.getElementById(`end-${prefix}`);
-        const startPage = startEl ? startEl.value : '1';
-        const endPage = endEl ? endEl.value : '1';
-        const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&pages=${startPage}-${endPage}&studentName=${enc(studentName)}`;
-        return { url, display: `${tb.name} p.${startPage}~${endPage}` };
+        const s = startEl ? startEl.value : '1';
+        const e = endEl ? endEl.value : '1';
+        pagesPart = `&pages=${s}-${e}`;
+        pageDisp = ` p.${s}~${e}`;
+      } else if (cfg.pageMode === 'single') {
+        const pageEl = document.getElementById(`page-${prefix}`);
+        const p = pageEl ? pageEl.value : '1';
+        pagesPart = `&pages=${p}`;
+        pageDisp = ` p.${p}`;
+      } else {
+        // none — 파서 호환을 위해 pages=0
+        pagesPart = '&pages=0';
+        pageDisp = '';
       }
 
-      // single 모드: 페이지만
-      const pageEl = document.getElementById(`page-${prefix}`);
-      const page = pageEl ? pageEl.value : '1';
-      const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&pages=${page}&studentName=${enc(studentName)}`;
-      return { url, display: `${tb.name} p.${page}` };
+      const display = `${tb.name}${unitDisp}${dayDisp}${pageDisp}`.trim();
+      const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}${unitPart}${dayPart}${pagesPart}&studentName=${enc(studentName)}`;
+      return { url, display };
     }
 
     function generateQR(studentId, tbId) {
@@ -4899,28 +4781,37 @@ var qrcode = function() {
           for (const tb of textbooks) {
             const s = state[tb.id];
             if (!s) continue;
+            const cfg = getTbConfig(tb);
 
             const enc = encodeURIComponent;
-            let url = null;
-            let display = '';
+            let unitPart = '';
+            let dayPart = '';
+            let pagesPart = '';
+            let unitDisp = '';
+            let dayDisp = '';
+            let pageDisp = '';
 
-            if (tb.name === '문법' && s.start && s.end) {
-              url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&pages=${s.start}-${s.end}&studentName=${enc(student.name)}`;
-              display = `문법 p.${s.start}~${s.end}`;
-            } else if (tb.name === '독해' && s.unit && s.page) {
-              url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&unit=${enc(s.unit + '단원')}&pages=${s.page}&studentName=${enc(student.name)}`;
-              display = `독해 ${s.unit}단원 p.${s.page}`;
-            } else if (tb.name === '클카' && s.day && s.page) {
-              url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&unit=day${s.day}&pages=${s.page}&studentName=${enc(student.name)}`;
-              display = `클카 Day${s.day} p.${s.page}`;
-            } else if (s.start && s.end) {
-              url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}&pages=${s.start}-${s.end}&studentName=${enc(student.name)}`;
-              display = `${tb.name} p.${s.start}~${s.end}`;
+            if (cfg.hasUnit && s.unit) {
+              unitPart = `&unit=${enc(s.unit + '단원')}`;
+              unitDisp = ` ${s.unit}단원`;
+            }
+            if (cfg.hasDay && s.day) {
+              dayPart = `&unit=day${s.day}`;
+              dayDisp = ` Day${s.day}`;
+            }
+            if (cfg.pageMode === 'range' && s.start && s.end) {
+              pagesPart = `&pages=${s.start}-${s.end}`;
+              pageDisp = ` p.${s.start}~${s.end}`;
+            } else if (cfg.pageMode === 'single' && s.page) {
+              pagesPart = `&pages=${s.page}`;
+              pageDisp = ` p.${s.page}`;
+            } else {
+              pagesPart = '&pages=0';
             }
 
-            if (url) {
-              records.push({ textbook: tb.name, url, display });
-            }
+            const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}${unitPart}${dayPart}${pagesPart}&studentName=${enc(student.name)}`;
+            const display = `${tb.name}${unitDisp}${dayDisp}${pageDisp}`.trim();
+            if (display) records.push({ textbook: tb.name, url, display });
           }
         }
 
