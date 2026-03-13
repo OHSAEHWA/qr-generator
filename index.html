@@ -228,6 +228,54 @@
     .class-student-check input[type=checkbox] { width: 18px; height: 18px; flex-shrink: 0; }
     .class-student-check .cs-name { flex: 1; }
 
+    .number-badge-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .number-badge {
+      min-width: 32px;
+      height: 28px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: white;
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.12s;
+      color: var(--text);
+      padding: 0 4px;
+    }
+    .number-badge:hover { border-color: var(--primary); }
+    .number-badge.nb-start {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+      font-weight: 700;
+    }
+    .number-badge.nb-end {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+      font-weight: 700;
+    }
+    .number-badge.nb-between {
+      background: #e8eeff;
+      border-color: #b8c8ff;
+      color: var(--primary);
+    }
+
+    .number-range-display {
+      font-size: 12px;
+      color: var(--primary-dark);
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
     .student-item {
       display: flex;
       align-items: center;
@@ -3816,6 +3864,19 @@ var qrcode = function() {
               btns.forEach(b => b.classList.toggle('active', b.dataset.value === dayNum));
             }
 
+            // 번호 복원
+            if (cfg.hasNumber) {
+              const numbers = url.searchParams.get('numbers') || '';
+              if (numbers) {
+                const parts = numbers.split('-');
+                const ns = document.getElementById(`numstart-${prefix}`);
+                const ne = document.getElementById(`numend-${prefix}`);
+                if (ns && parts[0]) ns.value = parts[0];
+                if (ne && parts[1]) ne.value = parts[1];
+                updateNumberDisplay(prefix);
+              }
+            }
+
             // 페이지 복원
             if (cfg.pageMode === 'range') {
               const parts = pages.split('-');
@@ -4263,6 +4324,18 @@ var qrcode = function() {
               btns.forEach(b => b.classList.toggle('active', b.dataset.value === dayNum));
             }
 
+            if (cfg.hasNumber) {
+              const numbers = url.searchParams.get('numbers') || '';
+              if (numbers) {
+                const parts = numbers.split('-');
+                const ns = document.getElementById(`numstart-${prefix}`);
+                const ne = document.getElementById(`numend-${prefix}`);
+                if (ns && parts[0]) ns.value = parts[0];
+                if (ne && parts[1]) ne.value = parts[1];
+                updateNumberDisplay(prefix);
+              }
+            }
+
             if (cfg.pageMode === 'range') {
               const parts = pages.split('-');
               const startEl = document.getElementById(`start-${prefix}`);
@@ -4416,6 +4489,19 @@ var qrcode = function() {
             </div>
           </div>
         </div>
+        <div style="border-top:1px solid var(--border);padding-top:16px;">
+          <label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;cursor:pointer;padding:8px 0;">
+            <input type="checkbox" id="tbsHasNumber" ${cfg.hasNumber ? 'checked' : ''} onchange="toggleSettingSection('tbsNumberWrap','tbsHasNumber')" style="width:18px;height:18px;"> 번호 사용
+          </label>
+          <div id="tbsNumberWrap" style="margin-top:10px;${cfg.hasNumber ? '' : 'display:none;'}">
+            <label style="font-size:12px;color:var(--text-light);display:block;margin-bottom:4px;">번호 개수</label>
+            <div class="num-input-wrap">
+              <button onclick="adjustSettingNum('tbsNumberCount',-1)">−</button>
+              <input type="number" id="tbsNumberCount" min="1" max="100" value="${cfg.numberCount}">
+              <button onclick="adjustSettingNum('tbsNumberCount',1)">+</button>
+            </div>
+          </div>
+        </div>
       `;
       openModal('tbSettingModal');
     };
@@ -4454,6 +4540,8 @@ var qrcode = function() {
         unitCount: parseInt(document.getElementById('tbsUnitCount')?.value) || 10,
         hasDay: document.getElementById('tbsHasDay')?.checked || false,
         dayCount: parseInt(document.getElementById('tbsDayCount')?.value) || 30,
+        hasNumber: document.getElementById('tbsHasNumber')?.checked || false,
+        numberCount: parseInt(document.getElementById('tbsNumberCount')?.value) || 45,
       };
 
       try {
@@ -4654,6 +4742,12 @@ var qrcode = function() {
           const activeBtn = document.querySelector(`#day-grid-${prefix} .grid-btn.active`);
           state.day = activeBtn ? activeBtn.dataset.value : '';
         }
+        if (cfg.hasNumber) {
+          const ns = document.getElementById(`numstart-${prefix}`);
+          const ne = document.getElementById(`numend-${prefix}`);
+          state.numStart = ns ? ns.value : '';
+          state.numEnd = ne ? ne.value : '';
+        }
         if (cfg.pageMode === 'range') {
           const s = document.getElementById(`start-${prefix}`);
           const e = document.getElementById(`end-${prefix}`);
@@ -4685,6 +4779,13 @@ var qrcode = function() {
           const btns = document.querySelectorAll(`#day-grid-${prefix} .grid-btn`);
           btns.forEach(b => b.classList.toggle('active', b.dataset.value === state.day));
         }
+        if (cfg.hasNumber && state.numStart) {
+          const ns = document.getElementById(`numstart-${prefix}`);
+          const ne = document.getElementById(`numend-${prefix}`);
+          if (ns) ns.value = state.numStart;
+          if (ne) ne.value = state.numEnd || '';
+          updateNumberDisplay(prefix);
+        }
         if (cfg.pageMode === 'range') {
           const s = document.getElementById(`start-${prefix}`);
           const e = document.getElementById(`end-${prefix}`);
@@ -4711,11 +4812,13 @@ var qrcode = function() {
     // 교재 설정 헬퍼
     function getTbConfig(tb) {
       return {
-        pageMode: tb.pageMode || 'range',     // 'range', 'single', 'none'
+        pageMode: tb.pageMode || 'range',
         hasUnit: tb.hasUnit || false,
         unitCount: tb.unitCount || 10,
         hasDay: tb.hasDay || false,
         dayCount: tb.dayCount || 30,
+        hasNumber: tb.hasNumber || false,
+        numberCount: tb.numberCount || 45,
       };
     }
 
@@ -4748,6 +4851,22 @@ var qrcode = function() {
                 <button class="grid-btn" onclick="selectDay(this,'${prefix}')" data-value="${i+1}" style="min-width:48px;">Day${i+1}</button>
               `).join('')}
             </div>
+          </div>
+        `;
+      }
+
+      // 번호 필드
+      if (cfg.hasNumber) {
+        html += `
+          <div class="input-group" style="flex-direction:column;align-items:flex-start;gap:6px;">
+            <div class="number-range-display" id="num-display-${prefix}">번호를 선택하세요</div>
+            <div class="number-badge-grid" id="num-grid-${prefix}">
+              ${Array.from({length: cfg.numberCount}, (_,i) => `
+                <button class="number-badge" onclick="selectNumber(this,'${prefix}',${i+1},'${studentId}','${tb.id}')" data-value="${i+1}">${i+1}</button>
+              `).join('')}
+            </div>
+            <input type="hidden" id="numstart-${prefix}" value="">
+            <input type="hidden" id="numend-${prefix}" value="">
           </div>
         `;
       }
@@ -4818,6 +4937,29 @@ var qrcode = function() {
         `;
       }
 
+      // 번호 (일괄: 시작~끝 입력)
+      if (cfg.hasNumber) {
+        html += `
+          <div class="input-group">
+            <label>시작번호</label>
+            <div class="num-input-wrap">
+              <button onclick="adjustBatchNum('bnumstart-${tb.id}',-1)">−</button>
+              <input type="number" id="bnumstart-${tb.id}" min="1" max="${cfg.numberCount}" value="1">
+              <button onclick="adjustBatchNum('bnumstart-${tb.id}',1)">+</button>
+            </div>
+          </div>
+          <span style="color:var(--text-light);">~</span>
+          <div class="input-group">
+            <label>끝번호</label>
+            <div class="num-input-wrap">
+              <button onclick="adjustBatchNum('bnumend-${tb.id}',-1)">−</button>
+              <input type="number" id="bnumend-${tb.id}" min="1" max="${cfg.numberCount}" value="1">
+              <button onclick="adjustBatchNum('bnumend-${tb.id}',1)">+</button>
+            </div>
+          </div>
+        `;
+      }
+
       // 페이지
       if (cfg.pageMode === 'range') {
         html += `
@@ -4883,6 +5025,10 @@ var qrcode = function() {
       let batchValues = {};
       if (cfg.hasUnit) batchValues.unit = document.getElementById(`bunit-${tbId}`)?.value || '';
       if (cfg.hasDay) batchValues.day = document.getElementById(`bday-${tbId}`)?.value || '';
+      if (cfg.hasNumber) {
+        batchValues.numStart = document.getElementById(`bnumstart-${tbId}`)?.value || '';
+        batchValues.numEnd = document.getElementById(`bnumend-${tbId}`)?.value || '';
+      }
       if (cfg.pageMode === 'range') {
         batchValues.start = document.getElementById(`bstart-${tbId}`)?.value || '1';
         batchValues.end = document.getElementById(`bend-${tbId}`)?.value || '1';
@@ -4901,6 +5047,13 @@ var qrcode = function() {
           if (cfg.hasDay && batchValues.day) {
             const btns = document.querySelectorAll(`#day-grid-${prefix} .grid-btn`);
             btns.forEach(b => b.classList.toggle('active', b.dataset.value === batchValues.day));
+          }
+          if (cfg.hasNumber && batchValues.numStart && batchValues.numEnd) {
+            const ns = document.getElementById(`numstart-${prefix}`);
+            const ne = document.getElementById(`numend-${prefix}`);
+            if (ns) ns.value = batchValues.numStart;
+            if (ne) ne.value = batchValues.numEnd;
+            updateNumberDisplay(prefix);
           }
           if (cfg.pageMode === 'range') {
             const s = document.getElementById(`start-${prefix}`);
@@ -4968,6 +5121,68 @@ var qrcode = function() {
       clearPrevMark(sId, tId);
     };
 
+    // 번호 선택: 첫 탭=시작, 둘째 탭=끝
+    window.selectNumber = function(btn, prefix, num, studentId, tbId) {
+      const startEl = document.getElementById(`numstart-${prefix}`);
+      const endEl = document.getElementById(`numend-${prefix}`);
+      const startVal = parseInt(startEl.value) || 0;
+      const endVal = parseInt(endEl.value) || 0;
+
+      if (!startVal || (startVal && endVal)) {
+        // 시작 선택 (또는 리셋)
+        startEl.value = num;
+        endEl.value = '';
+      } else {
+        // 끝 선택
+        if (num < startVal) {
+          // 끝이 시작보다 작으면 스왑
+          endEl.value = startVal;
+          startEl.value = num;
+        } else {
+          endEl.value = num;
+        }
+      }
+
+      updateNumberDisplay(prefix);
+      generateQR(studentId, tbId);
+      clearPrevMark(studentId, tbId);
+    };
+
+    function updateNumberDisplay(prefix) {
+      const startEl = document.getElementById(`numstart-${prefix}`);
+      const endEl = document.getElementById(`numend-${prefix}`);
+      const display = document.getElementById(`num-display-${prefix}`);
+      const grid = document.getElementById(`num-grid-${prefix}`);
+      if (!startEl || !grid) return;
+
+      const start = parseInt(startEl.value) || 0;
+      const end = parseInt(endEl.value) || 0;
+
+      // 배지 하이라이트
+      grid.querySelectorAll('.number-badge').forEach(b => {
+        const v = parseInt(b.dataset.value);
+        b.classList.remove('nb-start', 'nb-end', 'nb-between');
+        if (start && end) {
+          const lo = Math.min(start, end);
+          const hi = Math.max(start, end);
+          if (v === lo) b.classList.add('nb-start');
+          else if (v === hi) b.classList.add('nb-end');
+          else if (v > lo && v < hi) b.classList.add('nb-between');
+        } else if (start && !end) {
+          if (v === start) b.classList.add('nb-start');
+        }
+      });
+
+      // 텍스트 표시
+      if (start && end) {
+        display.textContent = `시작 ${Math.min(start,end)}번 ~ 끝 ${Math.max(start,end)}번`;
+      } else if (start) {
+        display.textContent = `시작 ${start}번 (끝번호를 선택하세요)`;
+      } else {
+        display.textContent = '번호를 선택하세요';
+      }
+    }
+
     window.onInputChange = function(studentId, tbId) {
       generateQR(studentId, tbId);
       clearPrevMark(studentId, tbId);
@@ -5013,6 +5228,22 @@ var qrcode = function() {
         }
       }
 
+      // 번호
+      let numberPart = '';
+      let numberDisp = '';
+      if (cfg.hasNumber) {
+        const ns = document.getElementById(`numstart-${prefix}`);
+        const ne = document.getElementById(`numend-${prefix}`);
+        const nStart = ns ? ns.value : '';
+        const nEnd = ne ? ne.value : '';
+        if (nStart && nEnd) {
+          const lo = Math.min(parseInt(nStart), parseInt(nEnd));
+          const hi = Math.max(parseInt(nStart), parseInt(nEnd));
+          numberPart = `&numbers=${lo}-${hi}`;
+          numberDisp = ` ${lo}번~${hi}번`;
+        }
+      }
+
       // 페이지
       if (cfg.pageMode === 'range') {
         const startEl = document.getElementById(`start-${prefix}`);
@@ -5032,8 +5263,8 @@ var qrcode = function() {
         pageDisp = '';
       }
 
-      const display = `${tb.name}${unitDisp}${dayDisp}${pageDisp}`.trim();
-      const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}${unitPart}${dayPart}${pagesPart}&studentName=${enc(studentName)}`;
+      const display = `${tb.name}${unitDisp}${dayDisp}${numberDisp}${pageDisp}`.trim();
+      const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}${unitPart}${dayPart}${numberPart}${pagesPart}&studentName=${enc(studentName)}`;
       return { url, display };
     }
 
@@ -5153,6 +5384,14 @@ var qrcode = function() {
               dayPart = `&unit=day${s.day}`;
               dayDisp = ` Day${s.day}`;
             }
+            let numberPart = '';
+            let numberDisp = '';
+            if (cfg.hasNumber && s.numStart && s.numEnd) {
+              const lo = Math.min(parseInt(s.numStart), parseInt(s.numEnd));
+              const hi = Math.max(parseInt(s.numStart), parseInt(s.numEnd));
+              numberPart = `&numbers=${lo}-${hi}`;
+              numberDisp = ` ${lo}번~${hi}번`;
+            }
             if (cfg.pageMode === 'range' && s.start && s.end) {
               pagesPart = `&pages=${s.start}-${s.end}`;
               pageDisp = ` p.${s.start}~${s.end}`;
@@ -5163,8 +5402,8 @@ var qrcode = function() {
               pagesPart = '&pages=0';
             }
 
-            const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}${unitPart}${dayPart}${pagesPart}&studentName=${enc(student.name)}`;
-            const display = `${tb.name}${unitDisp}${dayDisp}${pageDisp}`.trim();
+            const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}${unitPart}${dayPart}${numberPart}${pagesPart}&studentName=${enc(student.name)}`;
+            const display = `${tb.name}${unitDisp}${dayDisp}${numberDisp}${pageDisp}`.trim();
             if (display) records.push({ textbook: tb.name, url, display });
           }
         }
@@ -5631,4 +5870,3 @@ var qrcode = function() {
 
 </body>
 </html>
-
