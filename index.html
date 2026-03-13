@@ -218,14 +218,15 @@
     .class-student-check {
       display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 6px 10px;
-      font-size: 13px;
+      gap: 8px;
+      padding: 8px 10px;
+      font-size: 14px;
       cursor: pointer;
-      border-radius: 4px;
+      border-radius: 6px;
     }
     .class-student-check:hover { background: #f8f9fa; }
-    .class-student-check input { width: 16px; height: 16px; }
+    .class-student-check input[type=checkbox] { width: 18px; height: 18px; flex-shrink: 0; }
+    .class-student-check .cs-name { flex: 1; }
 
     .student-item {
       display: flex;
@@ -4025,10 +4026,12 @@ var qrcode = function() {
       const container = document.getElementById('classEditStudents');
       container.innerHTML = students.map(s => {
         const checked = s.classId === classId;
+        const otherClass = s.classId && s.classId !== classId ? (classes.find(c => c.id === s.classId) || {}).name || '' : '';
         return `
           <label class="class-student-check">
-            <input type="checkbox" value="${s.id}" ${checked ? 'checked' : ''}> ${escapeHtml(s.name)}
-            ${s.classId && s.classId !== classId ? `<span style="font-size:10px;color:var(--text-light);margin-left:auto;">${escapeHtml((classes.find(c => c.id === s.classId) || {}).name || '')}</span>` : ''}
+            <input type="checkbox" value="${s.id}" ${checked ? 'checked' : ''}>
+            <span class="cs-name">${escapeHtml(s.name)}</span>
+            ${otherClass ? `<span style="font-size:11px;color:var(--text-light);">${escapeHtml(otherClass)}</span>` : ''}
           </label>
         `;
       }).join('');
@@ -5628,3 +5631,4 @@ var qrcode = function() {
 
 </body>
 </html>
+
