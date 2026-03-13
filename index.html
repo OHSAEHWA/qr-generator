@@ -213,6 +213,16 @@
     }
     .class-group-edit:hover { color: var(--primary); }
 
+    .class-group-select {
+      border: none;
+      background: none;
+      font-size: 12px;
+      color: #adb5bd;
+      cursor: pointer;
+      padding: 2px 4px;
+    }
+    .class-group-select:hover { color: var(--primary); }
+
     .class-group-students { padding-left: 4px; }
 
     .class-student-check {
@@ -3962,6 +3972,7 @@ var qrcode = function() {
               <span class="class-group-name">${escapeHtml(cls.name)}</span>
               ${cls.desc ? `<span class="class-group-desc">${escapeHtml(cls.desc)}</span>` : ''}
               <span class="class-group-count">${members.length}명</span>
+              <button class="class-group-select" onclick="event.stopPropagation();selectClassStudents('${cls.id}')" title="반 전체선택">☑</button>
               <button class="class-group-edit" onclick="event.stopPropagation();openClassEdit('${cls.id}')" title="편집">✎</button>
             </div>
             ${isOpen ? `<div class="class-group-students">
@@ -3980,6 +3991,7 @@ var qrcode = function() {
               <span class="class-group-arrow ${isOpen ? 'open' : ''}">▶</span>
               <span class="class-group-name">미배정</span>
               <span class="class-group-count">${unassigned.length}명</span>
+              <button class="class-group-select" onclick="event.stopPropagation();selectClassStudents('__unassigned')" title="전체선택">☑</button>
             </div>
             ${isOpen ? `<div class="class-group-students">
               ${unassigned.map(s => renderStudentItem(s)).join('')}
@@ -4024,6 +4036,41 @@ var qrcode = function() {
         collapsedClasses.add(classId);
       }
       renderStudentList();
+    };
+
+    window.selectClassStudents = async function(classId) {
+      const members = classId === '__unassigned'
+        ? students.filter(s => !s.classId)
+        : students.filter(s => s.classId === classId);
+
+      if (members.length === 0) return;
+
+      // 이미 전원 선택되어 있으면 해제, 아니면 선택
+      const allSelected = members.every(s => selectedStudents.has(s.id));
+
+      if (allSelected) {
+        members.forEach(s => {
+          selectedStudents.delete(s.id);
+          delete prevRecords[s.id];
+        });
+      } else {
+        for (const s of members) {
+          selectedStudents.add(s.id);
+          await loadLatestRecordForStudent(s.id);
+        }
+      }
+
+      // 접혀있으면 펼치기
+      if (collapsedClasses.has(classId)) {
+        collapsedClasses.delete(classId);
+      }
+
+      renderStudentList();
+      renderWorkArea();
+      setTimeout(() => {
+        restoreRecordValues();
+        restorePrevRecords();
+      }, 150);
     };
 
     // ==================== CLASS MANAGEMENT ====================
@@ -5909,4 +5956,3 @@ var qrcode = function() {
 
 </body>
 </html>
-
