@@ -3593,7 +3593,11 @@ var qrcode = function() {
         </div>
         <div style="border-top:1px solid var(--border);padding-top:12px;">
           <label style="font-size:12px;font-weight:600;display:block;margin-bottom:8px;">소속 학생</label>
-          <div id="classEditStudents" style="max-height:240px;overflow-y:auto;"></div>
+          <div id="classEditStudents" style="max-height:200px;overflow-y:auto;"></div>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px;">
+          <label style="font-size:12px;font-weight:600;display:block;margin-bottom:8px;">사용 교재</label>
+          <div id="classEditTextbooks" style="max-height:200px;overflow-y:auto;"></div>
         </div>
       </div>
       <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;">
@@ -4097,6 +4101,20 @@ var qrcode = function() {
         `;
       }).join('');
 
+      // 교재 체크박스
+      const tbIds = cls.textbookIds || [];
+      const allChecked = tbIds.length === 0; // 비어있으면 전체 사용
+      const tbContainer = document.getElementById('classEditTextbooks');
+      tbContainer.innerHTML = textbooks.sort((a,b) => a.order - b.order).map(tb => {
+        const checked = allChecked || tbIds.includes(tb.id);
+        return `
+          <label class="class-student-check">
+            <input type="checkbox" name="classTb" value="${tb.id}" ${checked ? 'checked' : ''}>
+            <span class="cs-name">${escapeHtml(tb.name)}</span>
+          </label>
+        `;
+      }).join('');
+
       openModal('classEditModal');
     };
 
@@ -4107,9 +4125,15 @@ var qrcode = function() {
       if (!name) return showToast('반 이름을 입력해주세요');
       const desc = document.getElementById('classEditDesc').value.trim();
 
-      // 반 정보 업데이트
+      // 반 정보 + 교재 업데이트
+      const tbCheckboxes = document.querySelectorAll('#classEditTextbooks input[name=classTb]');
+      const selectedTbIds = [];
+      tbCheckboxes.forEach(cb => { if (cb.checked) selectedTbIds.push(cb.value); });
+      // 전체 선택이면 빈 배열 저장 (= 전체 사용)
+      const textbookIds = selectedTbIds.length === textbooks.length ? [] : selectedTbIds;
+
       try {
-        await updateDoc(doc(db, CLASSES_COL, editingClassId), { name, desc });
+        await updateDoc(doc(db, CLASSES_COL, editingClassId), { name, desc, textbookIds });
       } catch (e) {
         return showToast('반 정보 저장 실패');
       }
@@ -4680,16 +4704,17 @@ var qrcode = function() {
       let cardHtml = '';
       if (activeStudent) {
         const hasRecord = !!loadedRecords[activeStudent.id];
+        const studentTbs = getTextbooksForStudent(activeStudent.id).sort((a,b) => a.order - b.order);
         cardHtml = `
         <div class="student-work-card" id="card-${activeStudent.id}">
           <div class="student-work-header">
             <h3>📋 ${escapeHtml(activeStudent.name)} ${hasRecord ? '<span style="font-size:11px;color:var(--success);margin-left:6px;">● 기록있음</span>' : ''}</h3>
             <div style="display:flex;align-items:center;gap:8px;">
               <button class="btn btn-sm btn-primary" onclick="openTripleQR('${activeStudent.id}','${escapeHtml(activeStudent.name)}')" style="font-size:12px;">📱 QR 스캔</button>
-              <span style="font-size:12px;color:var(--text-light);">${textbooks.length}개</span>
+              <span style="font-size:12px;color:var(--text-light);">${studentTbs.length}개</span>
             </div>
           </div>
-          ${textbooks.sort((a,b) => a.order - b.order).map(tb => `
+          ${studentTbs.map(tb => `
             <div class="qr-row">
               <div class="qr-row-label">
                 ${escapeHtml(tb.name)}
@@ -4810,6 +4835,16 @@ var qrcode = function() {
     }
 
     // 교재 설정 헬퍼
+    function getTextbooksForStudent(studentId) {
+      const student = students.find(s => s.id === studentId);
+      if (!student || !student.classId) return textbooks; // 미배정은 전체
+
+      const cls = classes.find(c => c.id === student.classId);
+      if (!cls || !cls.textbookIds || cls.textbookIds.length === 0) return textbooks; // 빈 배열 = 전체
+
+      return textbooks.filter(tb => cls.textbookIds.includes(tb.id));
+    }
+
     function getTbConfig(tb) {
       return {
         pageMode: tb.pageMode || 'range',
@@ -5673,7 +5708,7 @@ var qrcode = function() {
       header.textContent = `📱 ${studentName}`;
       grid.innerHTML = '';
 
-      const sortedTbs = [...textbooks].sort((a,b) => a.order - b.order);
+      const sortedTbs = getTextbooksForStudent(studentId).sort((a,b) => a.order - b.order);
 
       // 슬라이드 데이터 준비
       slideItems = [];
