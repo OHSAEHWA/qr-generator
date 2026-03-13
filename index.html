@@ -215,13 +215,14 @@
 
     .class-group-select {
       border: none;
-      background: none;
-      font-size: 12px;
-      color: #adb5bd;
+      background: #f0f2f4;
+      font-size: 14px;
+      color: #868e96;
       cursor: pointer;
-      padding: 2px 4px;
+      padding: 4px 8px;
+      border-radius: 4px;
     }
-    .class-group-select:hover { color: var(--primary); }
+    .class-group-select:hover { color: var(--primary); background: #e8ebf0; }
 
     .class-group-students { padding-left: 4px; }
 
@@ -3971,8 +3972,8 @@ var qrcode = function() {
               <span class="class-group-arrow ${isOpen ? 'open' : ''}">▶</span>
               <span class="class-group-name">${escapeHtml(cls.name)}</span>
               ${cls.desc ? `<span class="class-group-desc">${escapeHtml(cls.desc)}</span>` : ''}
-              <span class="class-group-count">${members.length}명</span>
               <button class="class-group-select" onclick="event.stopPropagation();selectClassStudents('${cls.id}')" title="반 전체선택">☑</button>
+              <span class="class-group-count">${members.length}명</span>
               <button class="class-group-edit" onclick="event.stopPropagation();openClassEdit('${cls.id}')" title="편집">✎</button>
             </div>
             ${isOpen ? `<div class="class-group-students">
@@ -3990,8 +3991,8 @@ var qrcode = function() {
             <div class="class-group-header" onclick="toggleClassGroup('__unassigned')" style="opacity:0.7;">
               <span class="class-group-arrow ${isOpen ? 'open' : ''}">▶</span>
               <span class="class-group-name">미배정</span>
-              <span class="class-group-count">${unassigned.length}명</span>
               <button class="class-group-select" onclick="event.stopPropagation();selectClassStudents('__unassigned')" title="전체선택">☑</button>
+              <span class="class-group-count">${unassigned.length}명</span>
             </div>
             ${isOpen ? `<div class="class-group-students">
               ${unassigned.map(s => renderStudentItem(s)).join('')}
