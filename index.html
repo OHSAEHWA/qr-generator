@@ -5269,8 +5269,8 @@ var qrcode = function() {
       }
 
       // 번호
-      let numberPart = '';
       let numberDisp = '';
+      let subjectName = tb.name;
       if (cfg.hasNumber) {
         const ns = document.getElementById(`numstart-${prefix}`);
         const ne = document.getElementById(`numend-${prefix}`);
@@ -5279,8 +5279,8 @@ var qrcode = function() {
         if (nStart && nEnd) {
           const lo = Math.min(parseInt(nStart), parseInt(nEnd));
           const hi = Math.max(parseInt(nStart), parseInt(nEnd));
-          numberPart = `&numbers=${lo}-${hi}`;
           numberDisp = ` ${lo}번~${hi}번`;
+          subjectName = `${tb.name} ${lo}번~${hi}번`;
         }
       }
 
@@ -5298,13 +5298,12 @@ var qrcode = function() {
         pagesPart = `&pages=${p}`;
         pageDisp = ` p.${p}`;
       } else {
-        // none — 파서 호환을 위해 pages=0
         pagesPart = '&pages=0';
         pageDisp = '';
       }
 
       const display = `${tb.name}${unitDisp}${dayDisp}${numberDisp}${pageDisp}`.trim();
-      const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}${unitPart}${dayPart}${numberPart}${pagesPart}&studentName=${enc(studentName)}`;
+      const url = `gosuapp://homework?type=homework&subject=${enc(subjectName)}${unitPart}${dayPart}${pagesPart}&studentName=${enc(studentName)}`;
       return { url, display };
     }
 
@@ -5424,13 +5423,13 @@ var qrcode = function() {
               dayPart = `&unit=day${s.day}`;
               dayDisp = ` Day${s.day}`;
             }
-            let numberPart = '';
             let numberDisp = '';
+            let subjectName = tb.name;
             if (cfg.hasNumber && s.numStart && s.numEnd) {
               const lo = Math.min(parseInt(s.numStart), parseInt(s.numEnd));
               const hi = Math.max(parseInt(s.numStart), parseInt(s.numEnd));
-              numberPart = `&numbers=${lo}-${hi}`;
               numberDisp = ` ${lo}번~${hi}번`;
+              subjectName = `${tb.name} ${lo}번~${hi}번`;
             }
             if (cfg.pageMode === 'range' && s.start && s.end) {
               pagesPart = `&pages=${s.start}-${s.end}`;
@@ -5442,7 +5441,7 @@ var qrcode = function() {
               pagesPart = '&pages=0';
             }
 
-            const url = `gosuapp://homework?type=homework&subject=${enc(tb.name)}${unitPart}${dayPart}${numberPart}${pagesPart}&studentName=${enc(student.name)}`;
+            const url = `gosuapp://homework?type=homework&subject=${enc(subjectName)}${unitPart}${dayPart}${pagesPart}&studentName=${enc(student.name)}`;
             const display = `${tb.name}${unitDisp}${dayDisp}${numberDisp}${pageDisp}`.trim();
             if (display) records.push({ textbook: tb.name, url, display });
           }
@@ -5910,3 +5909,4 @@ var qrcode = function() {
 
 </body>
 </html>
+
