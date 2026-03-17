@@ -3693,6 +3693,7 @@ var qrcode = function() {
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js";
     import { getFirestore, collection, doc, getDocs, addDoc, updateDoc, deleteDoc, query, orderBy, where, limit, onSnapshot, setDoc, Timestamp } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 
     // Firebase Config
     const firebaseConfig = {
@@ -3705,6 +3706,12 @@ var qrcode = function() {
 
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app, 'gosuapp251015');
+    const auth = getAuth(app);
+
+    // 익명 로그인
+    signInAnonymously(auth).catch(e => {
+      console.error('익명 로그인 실패:', e);
+    });
 
     // Constants
     const ACADEMY_ID = 'zIoVXK5mAkhzJQX2OZt4fpVwne93';
@@ -4497,12 +4504,13 @@ var qrcode = function() {
           name,
           type: 'custom',
           order: textbooks.length + 1,
-          createdAt: Timestamp.now()
+          createdAt: new Date().toISOString()
         });
         input.value = '';
         showToast(`교재 "${name}" 추가 완료`);
       } catch (e) {
-        showToast('추가 실패');
+        console.error('교재 추가 오류:', e);
+        showToast('추가 실패: ' + (e.message || e));
       }
     };
 
@@ -5957,3 +5965,4 @@ var qrcode = function() {
 
 </body>
 </html>
+
