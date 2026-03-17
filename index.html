@@ -4476,10 +4476,13 @@ var qrcode = function() {
       onSnapshot(col, (snapshot) => {
         textbooks = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
         if (textbooks.length === 0) {
-          // 기본 교재 생성
           initDefaultTextbooks();
         }
         renderWorkArea();
+        // 설정 모달이 열려있으면 교재 목록도 갱신
+        if (document.getElementById('settingsModal').classList.contains('active')) {
+          renderTextbookSettings();
+        }
       });
     }
 
@@ -5965,4 +5968,3 @@ var qrcode = function() {
 
 </body>
 </html>
-
